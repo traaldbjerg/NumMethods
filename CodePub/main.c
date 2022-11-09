@@ -11,14 +11,14 @@ int main(int argc, char *argv[])
 
   /* déclarer les variables */
 
-  int m = 200;
+  int m = 221;
   int n, *ia, *ja; 
   double *a, *b, *x;
   double tc1, tc2, tw1, tw2; /* mis à jour le 13/10/22 */
 
   /* générér le problème */
 
-  if (prob(m, &n, &ia, &ja, &a, &b))
+  if (prob(m, &n, &ia, &ja, &a, &b)) // pas oublier de rajouter rho
      return 1;
   printf("\nPROBLEM: ");
   printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
