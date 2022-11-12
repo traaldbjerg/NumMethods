@@ -18,13 +18,13 @@ clean:
 	rm main
 
 main: main.c prob.o time.o  umfpack.o
-	cc $(COPT) $^ -o $@ $(LIB)
+	cc -g $(COPT) $^ -o $@ $(LIB)
 
 umfpack.o: umfpack.c
-	cc $(COPT) -c $< -o $@ -ISuiteSparse/UMFPACK/Include \
+	cc -g $(COPT) -c $< -o $@ -ISuiteSparse/UMFPACK/Include \
   -ISuiteSparse/SuiteSparse_config  -ISuiteSparse/AMD/Include
 
 %.o: %.c
-	cc $(COPT) -c $< -o $@
+	cc -g $(COPT) -c $< -o $@
 
 

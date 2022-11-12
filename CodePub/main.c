@@ -4,6 +4,7 @@
 #include "umfpk.h"
 #include "time.h"
 
+
 /* Fonction main */
 
 int main(int argc, char *argv[])
@@ -11,7 +12,7 @@ int main(int argc, char *argv[])
 
   /* déclarer les variables */
 
-  int m = 221;
+  int m = 12;
   int n, *ia, *ja; 
   double *a, *b, *x;
   double tc1, tc2, tw1, tw2; /* mis à jour le 13/10/22 */
