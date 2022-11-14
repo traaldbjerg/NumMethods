@@ -48,7 +48,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
     }
     q = (m-1) / 11; // nombre de fois que m-1 est multiple de 11
     p = 4 * m - 4; // nombre de points sur le périmètre
-    nb_dir = (2 * q + 1) + (5 * q + 1); // nombre de points répondant à la condition au bord dirichlet porte/fenêtre
+    nb_dir = (2 * q + 1) + (5 * q + 1); // nombre de points sur une porte/fenêtre
     invh2 = (m-1)*(m-1) / (L*L); /* h^-2 */
     //*n  = (m-1) * m; /* nombre d'inconnues */
     *n = m * m // nombre total de points dans le carré
@@ -64,15 +64,12 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
         + 5 * 1; // coin "du milieu", pas de normale donc on n'applique pas les conditions de neumann
     /* allocation des tableaux */
 
-    printf("%d", nnz);
-
     *ia  = malloc((*n + 1) * sizeof(int));
     *ja  = malloc(nnz * sizeof(int));
     *a   = malloc(nnz * sizeof(double));
     *b   = malloc(*n * sizeof(double));
 
     /* allocation réussite? */
-
 
     if (*ia == NULL || *ja == NULL || *a == NULL || *b == NULL ) {
         printf("\n ERREUR : pas assez de mémoire pour générer le système\n\n");
@@ -93,8 +90,10 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
 
     // remplissage de la matrice
 
+    //int nnz_save = nnz;
+
     for (iy = 0; iy < m; iy++) { // vertical
-        //printf("Line: %d", iy);
+        //printf("\n\nLine: %d", iy);
         for (ix = 0; ix < m; ix++) { // horizontal
             if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
                 /* numéro de l'équation */
@@ -114,14 +113,14 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
 
                         //printf("a");
 
-                        if ((q * 6 < iy) && (iy <= q * 8)) { // en face de la porte
-                            (*ja)[nnz] = ind - q * 3 - 1; // il y a moins d'inconnues sur cette bande => il faut moins diminuer les indices
-                        } else if (iy == q * 6) {
-                            (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire un point
-                        } else if (iy == 1 && ix < q * 3) { // la fenêtre retire q * 5 inconnues
-                            (*ja)[nnz] = ind - q * 6 - 1;
+                        if (iy == q * 6 || iy == q * 6 + 1) {
+                            (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire une inconnue
+                        } else if ((q * 6 < iy) && (iy <= q * 8)) { // en face de la porte
+                            (*ja)[nnz] = ind - q * 3; // il y a moins d'inconnues sur cette bande => il faut moins diminuer les indices
                         } else if (q * 8 < iy) {
-                            (*ja)[nnz] = ind - q * 3 - 2; // diminuer d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                            (*ja)[nnz] = ind - q * 3 - 1; // diminuer d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                        } else if (iy == 1 && ix < q * 3) {
+                            (*ja)[nnz] = ind - 6 * q - 1; // la fenêtre diminue le nombre de points sur lesquels il faut retourner
                         } else {
                             (*ja)[nnz] = ind - m; // sinon il y a m points dans la liste avant d'arriver au point spatialement en dessous
                         }
@@ -136,14 +135,15 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
 
                             //printf("b");
 
-                            if ((q * 6 < iy) && (iy <= q * 8)) { // en face de la porte
-                                (*ja)[nnz] = ind - q * 3 - 1; // il y a moins d'inconnues sur cette bande => il faut moins diminuer les indices
-                            } else if (iy == q * 6) {
-                                (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire un point
+
+                            if (iy == q * 6 || iy == q * 6 + 1) {
+                                (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire une inconnue
+                            } else if ((q * 6 < iy) && (iy <= q * 8)) { // en face de la porte
+                                (*ja)[nnz] = ind - q * 3; // il y a moins d'inconnues sur cette bande => il faut moins diminuer les indices
                             } else if (q * 8 < iy) {
-                                (*ja)[nnz] = ind - q * 3 - 2; // diminuer d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                                (*ja)[nnz] = ind - q * 3 - 1; // diminuer d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
                             } else if (iy == 1 && ix < q * 3) {
-                                (*ja)[nnz] = ind - 6 * q - 1; // la fenêtre diminue le nombre de points sur lesquels il faut retourner
+                                (*ja)[nnz] = ind - 6 * q; // la fenêtre diminue le nombre de points sur lesquels il faut retourner
                             } else {
                                 (*ja)[nnz] = ind - m; // sinon il y a m points dans la liste avant d'arriver au point spatialement en dessous
                             }
@@ -157,11 +157,6 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
                         (*a)[nnz] = -2*invh2; 
                         (*ja)[nnz] = ind - 1;
                         nnz++;
-                    /*} else if (ix == 0) { // bord ouest, LA PORTE EST DEJA SAUTEE DANS LE TOUT PREMIER IF
-                        // Neumann
-                        (*a)[nnz] = -2*invh2; 
-                        (*ja)[nnz] = ind - 1;
-                        nnz++;*/
                     } else if (ix == q * 8 + 1 && iy == 0) { // juste à droite de la fenêtre mais il ne faut rien faire puisque Tf = 0
                         (*b)[ind] += 0*invh2;
                     } else if (ix > 0) { /* milieu du domaine */
@@ -202,12 +197,12 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
                         (*a)[nnz] = -2*invh2; 
                         //(*ja)[nnz] = ind + m;
 
-                        if ((q * 6 <= iy) && (iy <= q * 8)) {
-                            (*ja)[nnz] = ind + q * 3 + 1; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
-                        } else if (iy == 0 && ix < q * 3) {
-                             (*ja)[nnz] = ind + q * 6 + 1;
-                        } else if (q * 8 < iy) {
-                            (*ja)[nnz] = ind + q * 3 + 2; // augmenter d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                        //if ((q * 6 <= iy) && (iy < q * 8)) {
+                            //(*ja)[nnz] = ind + q * 3; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
+                        if (iy == 0 && ix < q * 3) {
+                             (*ja)[nnz] = ind + q * 6;
+                        //} else if (q * 8 <= iy) {
+                            //(*ja)[nnz] = ind + q * 3 + 1; // augmenter d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
                         } else {
                             (*ja)[nnz] = ind + m; // sinon il y a m points dans la liste avant d'arriver au point spatialement au dessus
                         }
@@ -219,10 +214,12 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
                         (*a)[nnz] = -invh2;
                         //(*ja)[nnz] = ind + m;
 
-                        if ((q * 6 <= iy) && (iy <= q * 8)) {
-                            (*ja)[nnz] = ind + q * 3 + 1; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
-                        } else if (q * 8 < iy) {
-                            (*ja)[nnz] = ind + q * 3 + 2; // augmenter d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                        if ((q * 6 < iy) && (iy < q * 8)) {
+                            (*ja)[nnz] = ind + q * 3; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
+                        } else if (q * 8 <= iy) {
+                            (*ja)[nnz] = ind + q * 3 + 1; // augmenter d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                        } else if (iy == q * 6 - 1 || iy == q * 6) {
+                            (*ja)[nnz] = ind + m - 1;
                         } else {
                             (*ja)[nnz] = ind + m; // sinon il y a m points dans la liste avant d'arriver au point spatialement au dessus
                         }
@@ -233,7 +230,14 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
                 //printf("\n\n%d", nnz);
             }
             //ind++;
+
+            /*printf(" %d ", ix);
+            for (int i = nnz_save; i < nnz; i++) {
+                printf("\n%d", (*ja)[i]);
+            }
+            nnz_save = nnz;*/
         }
+
     }
 
     //printf("%d", nnz);
@@ -244,7 +248,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
 
     // écriture dans les fichiers respectifs
 
-    for (int i = 0; i < *n; i++) {
+    for (int i = 0; i < *n + 1; i++) {
         fprintf(f_ia, "%d\n", (*ia)[i]);
     }
 
