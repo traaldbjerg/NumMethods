@@ -9,3 +9,4 @@ with open("exmat/ja.23.2.txt", "r") as nap_ja:
             if ast.literal_eval(lines_nap[i]) != ast.literal_eval(lines_ja[i]):
                 print(i + 1)
                 
+                
