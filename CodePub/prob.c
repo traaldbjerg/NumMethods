@@ -68,6 +68,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
     *ja  = malloc(nnz * sizeof(int));
     *a   = malloc(nnz * sizeof(double));
     *b   = malloc(*n * sizeof(double));
+    
 
     /* allocation réussite? */
 
@@ -255,7 +256,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
     for (int i = 0; i < nnz; i++) {
         fprintf(f_ja, "%d\n", (*ja)[i]);
     }
-    
+
     for (int i = 0; i < nnz; i++) {
         fprintf(f_a, "%f\n", (*a)[i]);
     }
