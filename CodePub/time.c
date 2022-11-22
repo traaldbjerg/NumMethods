@@ -1,6 +1,7 @@
 #include <time.h>
 #include "time.h"
 
+
 /* retourne le temps CPU depuis le début de l'execution du programme */
 double mytimer_cpu(void){
     return (double) clock() / CLOCKS_PER_SEC;
