@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 
-int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajoute la fonction source en argument
+int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*source_func)(double, double)) // on rajoute la fonction source en argument
 /*
    But
    ===
@@ -14,7 +14,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
    régulière m x m de l'équation de Poisson à deux dimensions
               
             d    d        d    d
-         - == ( == u ) - == ( == u )  = 0     sur [0,1] x [0,1]
+         - == ( == u ) - == ( == u )  = rho     sur [0,5.5] x [0,5.5]
            dx   dx       dy   dy
 
   avec les conditions aux limites de Dirichlet
@@ -35,7 +35,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
   ja (output) - pointeur vers le tableau 'ja' de la matrice A
   a  (output) - pointeur vers le tableau 'a' de la matrice A
   b  (output) - pointeur vers le tableau 'b'
-  rho - fonction source de chaleur
+  rho - fonction source
 
 */
 {
@@ -97,15 +97,11 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
         //printf("\n\nLine: %d", iy);
         for (ix = 0; ix < m; ix++) { // horizontal
             if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
-                /* numéro de l'équation */
-                //ind = ix + (m-1) * iy;
                 /* marquer le début de la ligne suivante dans le tableau 'ia' */
                 (*ia)[ind] = nnz;
 
                 /* calculer le membre de droite */
-                (*b)[ind] = 0.0; /* rho = 0 */
-
-                //printf("\n%d", nnz);
+                (*b)[ind] = source_func(ix * L / (q * 11), iy * L / (q * 11)); /* rho = temp locale */
 
                 /* remplissage de la ligne : voisin sud */
                     if (iy == m-1 || (iy == q * 6 && ix > q * 3)) { /* condition de Neumann, bord nord + attention au rectangle retiré */
@@ -135,7 +131,6 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
                             (*a)[nnz] = -invh2;
 
                             //printf("b");
-
 
                             if (iy == q * 6 || iy == q * 6 + 1) {
                                 (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire une inconnue
@@ -228,7 +223,6 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
                     }
                 // prochaine equation
                 ind++;
-                //printf("\n\n%d", nnz);
             }
             //ind++;
 
@@ -264,6 +258,8 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b) // on rajout
     for (int i = 0; i < *n; i++) {
         fprintf(f_b, "%f\n", (*b)[i]);
     }
+
+    fclose(f_ia); fclose(f_ja); fclose(f_a); fclose(f_b); // fermer les fichiers proprement
 
     /* retour habituel de fonction */
     return 0;

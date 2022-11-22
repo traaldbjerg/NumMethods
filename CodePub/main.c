@@ -4,6 +4,7 @@
 #include "umfpk.h"
 #include "time.h"
 #include "residue.h"
+#include "rho.h"
 
 
 /* Fonction main */
@@ -13,7 +14,8 @@ int main(int argc, char *argv[])
 
     /* déclarer les variables */
 
-    int m = 661;
+    double (*rho_ptr)(double, double) = &rho;
+    int m = 67;
     int q = (m-1) / 11;
     double L = 5.5;
     int n, *ia, *ja; 
@@ -22,7 +24,7 @@ int main(int argc, char *argv[])
 
     /* générér le problème */
 
-    if (prob(m, &n, &ia, &ja, &a, &b)) // pas oublier de rajouter rho
+    if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr)) // pas oublier de rajouter rho
         return 1;
     printf("\nPROBLEM: ");
     printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
@@ -54,6 +56,8 @@ int main(int argc, char *argv[])
         fprintf(f_x, "%f\n", (x)[i]); // debug
     }
 
+    fclose(f_x);
+
     // créer le fichier de sortie pour gnuplot
 
     int i = 0;
@@ -71,6 +75,8 @@ int main(int argc, char *argv[])
         }
         fprintf(f_out, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
     }
+
+    fclose(f_out); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
 
     tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
