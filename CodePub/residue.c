@@ -29,7 +29,7 @@ double residue(int *n, int **ia, int **ja, double **a, double **b, double **x) {
 
     norm_b = sqrt(norm_b);
     res = sqrt(res);
-    printf("\nNorme de b: %.10e\n", norm_b); // debug, actuellement du genre 1e07
+    //printf("\nNorme de b: %.10e\n", norm_b); // debug
     res /= norm_b;
 
     return res;
