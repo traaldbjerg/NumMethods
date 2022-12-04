@@ -18,7 +18,8 @@ int main(int argc, char *argv[])
     int m = 166;
     int u = 0;
     int q = (m-1) / 11;
-    double temp_rad = 000.0; // permet d'itérer sur les différentes valeurs de rho pour 
+    int nb_dir = (2 * q + 1) + (5 * q + 1); // nombre de points sur une porte/fenêtre
+    double temp_rad = 0.0; // permet d'itérer sur les différentes valeurs de rho pour 
     double save_temp;
     double save_dev;
     double avrg, std_dev;
@@ -26,18 +27,22 @@ int main(int argc, char *argv[])
     double L = 5.5;
     int n, *ia, *ja; 
     double *a, *b, *x;
+    double h = L / (m-1); // longueur d'un pas
     double tc1, tc2, tc3, tc4, tw1, tw2, tw3, tw4; // mis à jour le 13/10/22 
     double *vec_dev = malloc(1000 * sizeof(double)); // sauvegarder les 1000 résultats obtenus
 
-    for (u=0; u < 1000; u++) {
+    printf("\nPROBLEM: ");
+    printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
+
+    for (u=0; u < 2; u++) {
 
         // générér le problème 
 
         if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr, temp_rad, 0)) // temp_rad permet de lancer des simus de problèmes différents
             return 1;
-        //printf("\nPROBLEM: ");
-        //printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
 
+        printf("\nPROBLEM: ");
+        printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
 
         // allouer la mémoire pour le vecteur de solution 
 
@@ -122,15 +127,77 @@ int main(int argc, char *argv[])
         std_dev /= dim;
         std_dev -= pow(avrg, 2.0);
         std_dev = sqrt(std_dev); // l'écart-type est finalisé
-        std_dev /= avrg; // on divise par la moyenne pour ne pas trop pénaliser les hautes températures
+        std_dev /= avrg; // on divise par la moyenne pour ne pas trop pénaliser les hautes températures de radiateur
         //printf("Ecart-type de l'échantillon: %f", std_dev);
 
         vec_dev[u] = std_dev;
         //u++;
 
-        printf("\n%f     %f\n", temp_rad, std_dev);
+        // calculer gradients sur toute la zone comme autre critère d'uniformité + utile pour flux de chaleur
+/*
+        int i = 0;
+        int j = 0;
+        avrg = 0.0; // construit pour donner la moyenne
+        dim = 0; // taille de l'échantillon
 
-        
+        double *grad_x = malloc((n + nb_dir) * sizeof(double)); // créer le vecteur grad_x
+        double *grad_y = malloc((n + nb_dir) * sizeof(double)); // créer le vecteur grad_y
+
+        for (int iy = 0; iy < m; iy++) { // vertical
+            for (int ix = 0; ix < m; ix++) { // horizontal
+                // différences centrées, avant ou arrière?
+                if ((iy <= 6 * q || ix <= 3 * q) //&& !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))
+                                                ) { // si on n'est pas dans le rectangle supérieur droit*
+                    
+                    // grad selon x
+                    if (ix == 0){ // différence avant
+                        if ((q * 6 <= iy) && (iy <= q * 8)) { // porte
+                            grad_x[j] = (x[i + 1] - 20) / h;
+                        } else {
+                            
+                        }
+                    } else if (ix == 1) {
+                        if ((q * 6 <= iy) && (iy <= q * 8)) { // centrée mais attention dirichlet
+
+                        }
+                    } else if (ix == m-1) { // différence arrière
+
+                    } else if (ix == 3 * q && iy < q * 6) { // différence arrière
+
+                    } else { // différence centrée
+
+                    }
+
+
+                    // grad selon y
+                    if (iy == 0) { // différence avant
+                        if ((q * 3 <= ix) && (ix <= q * 8)) { // fenêtre
+                            
+                        } else { // pas fenêtre
+
+                        }
+                    } else if (iy == 1) { // centrée mais attention dirichlet
+                        if ((q * 3 <= ix) && (ix <= q * 8)) { // fenêtre
+                            
+                        }
+                    } else if (iy == m-1) { // différence arrière
+
+                    } else if (ix < q*3 && iy == 6) { // différence arrière
+                        
+                    } else { // différence centrée
+
+                    }
+                }
+                
+
+
+*/
+
+
+        // estimer flux de chaleur par porte et fenêtre
+
+
+        printf("\n%f    %f\n", temp_rad, std_dev);
 
         if (u == 0) { // première fois
             save_temp = temp_rad;
@@ -140,13 +207,19 @@ int main(int argc, char *argv[])
             save_dev = std_dev;
         }
 
+        //free(grad_x); free(grad_y);
+
         temp_rad += 1.0;
 
         free(ia); free(ja); free(a); free(b); free(x);
 
     }
 
-    // on a trouvé la meilleure temp du radiateur, on la re-résout pour pouvoir l'afficher ensuite 
+    
+
+    // on a trouvé la meilleure temp du radiateur, on la re-résout pour pouvoir l'afficher ensuite (plus économe que de faire 1000 fois de l'écriture de fichier)
+
+    temp_rad = save_temp; // on assigne temp_rad à la meilleure solution
 
     printf("Meilleure température du radiateur: %f      Meilleur écart-type: %f", save_temp, save_dev);
 
@@ -208,7 +281,6 @@ int main(int argc, char *argv[])
 
     fclose(f_out); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
 
-    
     //tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
     double r = residue(&n, &ia, &ja, &a, &b, &x);
@@ -222,9 +294,9 @@ int main(int argc, char *argv[])
     //printf("\nTemps de calcul du résidu (CPU): %5.1f sec",tc4-tc3);
     //printf("\nTemps de calcul du résidu (horloge): %5.1f sec \n",tw4-tw3);
 
-    // libérér la mémoire 
+    // libérer la mémoire 
 
-    free(ia); free(ja); free(a); free(b); free(x);
+    free(ia); free(ja); free(a); free(b); free(x); free(vec_dev);
     system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     return 0;
 }
