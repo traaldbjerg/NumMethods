@@ -31,18 +31,17 @@ int main(int argc, char *argv[])
     double tc1, tc2, tc3, tc4, tw1, tw2, tw3, tw4; // mis à jour le 13/10/22 
     double *vec_dev = malloc(1000 * sizeof(double)); // sauvegarder les 1000 résultats obtenus
 
-    printf("\nPROBLEM: ");
-    printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
-
-    for (u=0; u < 2; u++) {
+    for (u=0; u < 1000; u++) {
 
         // générér le problème 
 
         if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr, temp_rad, 0)) // temp_rad permet de lancer des simus de problèmes différents
             return 1;
 
-        printf("\nPROBLEM: ");
-        printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
+        if (u == 0) { // pour ne pas imprimer le nombre d'inconnues 1000 fois
+            printf("\nPROBLEM: ");
+            printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
+        }
 
         // allouer la mémoire pour le vecteur de solution 
 
