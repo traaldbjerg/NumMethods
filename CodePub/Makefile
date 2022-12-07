@@ -17,7 +17,7 @@ clean:
 	rm *.o 
 	rm main
 
-main: main.c prob.o time.o  umfpack.o residue.o rho.o
+main: main.c prob.o time.o  umfpack.o residue.o rho.o heatflux.o
 	cc -g $(COPT) $^ -o $@ $(LIB)
 
 umfpack.o: umfpack.c

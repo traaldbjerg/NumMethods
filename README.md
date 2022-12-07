@@ -34,5 +34,10 @@ Dans un nouveau fichier rho.c, la fonction rho a été déclarée, fonction de x
     Visuellement, std_dev/avg semble être un meilleur critère d'uniformité.
     C'est logique étant donné que ce critère pénalise moins les hautes températures.
 
-Le flux de chaleur sortant par la porte et la fenêtre a également été estimé.
+Le flux de chaleur sortant par la porte et la fenêtre a également été estimé : le flux a été estimé en intégrant la densité de flux de chaleur (à savoir -k * dT/d[x ou y]) sur la longueur de la porte/fenêtre). La puissance du radiateur, elle, a été obtenue en intégrant k * rho sur la surface effective (c'est-à-dire la surface "vue" par la discrétisation) du radiateur.
+Pour un radiateur éteint, le flux de chaleur traversant la porte est d'environ 0.261594 W, tandis que par la fenêtre on a -0.269866 W (calculés à m = 1101). Ces 2 valeurs ne sont pas tout à fait égales mais ceci s'explique simplement par la quantité d'approximations réalisées de par la nature de la discrétisation des équations continues.
+
+Pour un radiateur allumé, pour le rho tel que la distribution de température de la pièce est la plus uniforme (rho = 534.000 K/m2), on voit que la somme des flux de chaleur à travers la porte/fenêtre est très proche de la puissance du radiateur, de l'ordre de 3.3 W, avec un écart de l'ordre de 1% pour des valeurs de m > 150. Ceci est logique : ce code traite de l'équation de la chaleur sous sa forme stationnaire, ce qui implique qu'il ne peut y avoir de variation de température au cours du temps. De ce fait, il ne peut y avoir accumulation de chaleur, et donc toute la puissance dissipée par le radiateur doit être compensée par les pertes au niveau de la porte/fenêtre.
+
+## Question 5 : Solveur open-source
 

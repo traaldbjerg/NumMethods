@@ -16,7 +16,5 @@ double rho(double x, double y, double temp){
         }
     }
 
-    //res = 0.0; // debug, permet bêtement de désactiver rho
-
     return res;
 }
