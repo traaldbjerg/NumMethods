@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 
-int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*source_func)(double, double)) // on rajoute la fonction source en argument
+int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*source_func)(double, double, double), double temp, int write) // on rajoute la fonction source en argument
 /*
    But
    ===
@@ -38,6 +38,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
   rho - fonction source
 
 */
+
 {
     int  nnz, ix, iy, ind, q, p, nb_dir;
     double invh2, L = 5.5, Tp = 20.0;
@@ -81,13 +82,6 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
 
     ind = 0; /* au cas où m<=1 */
     nnz = 0;
-    
-    // création des fichiers
-
-    FILE *f_ia = fopen("mat/ia.txt", "w");
-    FILE *f_ja = fopen("mat/ja.txt", "w");
-    FILE *f_a = fopen("mat/a.txt", "w");
-    FILE *f_b = fopen("mat/b.txt", "w");
 
     // remplissage de la matrice
 
@@ -101,7 +95,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
                 (*ia)[ind] = nnz;
 
                 /* calculer le membre de droite */
-                (*b)[ind] = source_func(ix * L / (q * 11), iy * L / (q * 11)); /* rho = temp locale */
+                (*b)[ind] = source_func(ix * L / (q * 11), iy * L / (q * 11), temp); /* rho = temp locale */
 
                 /* remplissage de la ligne : voisin sud */
                     if (iy == m-1 || (iy == q * 6 && ix > q * 3)) { /* condition de Neumann, bord nord + attention au rectangle retiré */
@@ -241,25 +235,36 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
     (*ia)[ind] = nnz;
 
 
-    // écriture dans les fichiers respectifs
+    if (write) { // ne pas créer de fichiers quand on veut lancer beaucoup de simulations en un coup -> l'io sur des fichiers est lent
 
-    for (int i = 0; i < *n + 1; i++) {
-        fprintf(f_ia, "%d\n", (*ia)[i]);
+        // création des fichiers
+
+        FILE *f_ia = fopen("mat/ia.txt", "w");
+        FILE *f_ja = fopen("mat/ja.txt", "w");
+        FILE *f_a = fopen("mat/a.txt", "w");
+        FILE *f_b = fopen("mat/b.txt", "w");
+
+        // écriture dans les fichiers respectifs
+
+        for (int i = 0; i < *n + 1; i++) {
+            fprintf(f_ia, "%d\n", (*ia)[i]);
+        }
+
+        for (int i = 0; i < nnz; i++) {
+            fprintf(f_ja, "%d\n", (*ja)[i]);
+        }
+
+        for (int i = 0; i < nnz; i++) {
+            fprintf(f_a, "%f\n", (*a)[i]);
+        }
+
+        for (int i = 0; i < *n; i++) {
+            fprintf(f_b, "%f\n", (*b)[i]);
+        }
+
+        fclose(f_ia); fclose(f_ja); fclose(f_a); fclose(f_b); // fermer les fichiers proprement
+
     }
-
-    for (int i = 0; i < nnz; i++) {
-        fprintf(f_ja, "%d\n", (*ja)[i]);
-    }
-
-    for (int i = 0; i < nnz; i++) {
-        fprintf(f_a, "%f\n", (*a)[i]);
-    }
-
-    for (int i = 0; i < *n; i++) {
-        fprintf(f_b, "%f\n", (*b)[i]);
-    }
-
-    fclose(f_ia); fclose(f_ja); fclose(f_a); fclose(f_b); // fermer les fichiers proprement
 
     /* retour habituel de fonction */
     return 0;

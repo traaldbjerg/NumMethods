@@ -1,0 +1,14 @@
+recherche de l'optimum de température du radiateur, recherche linéaire, temp_rad = 0.000 jusque 999.0 par pas de 1
+
+radiateur en bas:
+    meilleur std_dev/avg: 0.160079 pour temp_rad = 534.000
+    meilleur std_dev: 2.939890 pour temp_rad = 434.000
+
+radiateur en haut:
+    meilleur std_dev/avg: 0.367950 pour temp_rad = 174.000
+    meilleur std_dev: 5.050443 pour temp_rad = 67.000
+
+en se basant sur le critère d'écart-type, il semblerait que le radiateur en haut de la pièce mène à la configuration de température la plus uniforme
+
+visuellement, std_dev/avg semble être un meilleur critère d'uniformité
+c'est logique étant donné que ce critère pénalise moins les hautes températures
