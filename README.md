@@ -65,11 +65,27 @@ Ensuite, pour que main.c puisse avoir accès à la librairie, il faut indiquer �
 
     export LD_LIBRARY_PATH+=/pathtothisproject/petsc/arch-linux-c-debug/lib/
 
-dans un terminal (il faudra le refaire si vous éteignez votre machine). Sur ma machine, cela donne:
+dans un terminal (il faudra le refaire si vous éteignez votre machine). Sur ma machine, cela donne :
 
     export LD_LIBRARY_PATH+=/home/alexs/code/cn/project/CalculNum2223/CodePub/petsc/arch-linux-c-debug/lib/
 
 Une fois ceci fait, lancer make dans le répertoire où se trouve main.c devrait fonctionner.
 
-Sans préconditionneur, la comparaison montre que PETSc et UMFPACK aboutissent à des solutions relativement proches, par exemple pour le tout premier point UMFPACK trouve une température de 17.790890, tandis que PETSc trouve une température de 17.783690 (m = 166, rho = 534.00 K/m2). L'affichage des 2 solutions est visuellement identique. Cependant, PETSc (sans préconditionnement custom) est environ 5 fois plus lent. De plus, le résidu atteint par PETSc sans préconditionnement semble mauvais (de l'ordre de 3.93e-6 au lieu de 1.04e-14 pour UMFPACK).
+Sans préconditionneur, la comparaison montre que PETSc et UMFPACK aboutissent à des solutions relativement proches, par exemple pour le tout premier point UMFPACK trouve une température de 17.790890, tandis que PETSc trouve une température de 17.783690 (m = 166, rho = 534.00 K/m2). L'affichage des 2 solutions est visuellement identique. Cependant, PETSc (sans préconditionnement custom) est environ 5 fois plus lent. De plus, le résidu atteint par PETSc sans préconditionnement et sans tolérance prédéfinie est mauvais (de l'ordre de 3.93e-6 au lieu de 1.04e-14 pour UMFPACK).
 
+En rajoutant un préconditionneur PCILU (PCJACOBI est sensiblement plus lent) et en mettant une tolérance de 1e-15, le résidu final est comparable à UMFPACK, cependant le temps de calcul devient beaucoup plus long! En effet, pour m = 331 et le radiateur éteint on a :
+
+    Temps de solution, UMFPACK (CPU):   0.3 sec
+    Temps de solution, UMFPACK (horloge):   0.3 sec
+
+    Résidu de la solution: 5.7279914362e-15
+
+    Temps de calcul du résidu UMFPACK (CPU):   0.0 sec
+    Temps de calcul du résidu UMFPACK (horloge):   0.0 sec
+
+    Temps de solution, PETSc (CPU):  20.9 sec
+    Temps de solution, PETSc (horloge):  20.9 sec
+
+    Résidu de la solution PETSc: 6.0074350247e-15
+
+Il est possible que ceci soit dû au fait que PETSc a été compilé sans MPI, qui semble être une composante importante de la philosophie de design de PETSc (à en croire le site).

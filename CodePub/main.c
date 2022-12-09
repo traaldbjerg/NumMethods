@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     double (*rho_ptr)(double, double, double) = &rho;
     int m = 166;
     int u = 0;
-    int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
+    int iter_max = 1000; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int q = (m-1) / 11;
     int use_petsc = 1; // activer ou déactiver l'utilisation de PETSc
     double source_value = 0.00; // permet d'itérer sur les différentes valeurs de rho pour 
@@ -33,6 +33,8 @@ int main(int argc, char *argv[])
     double *a, *b, *x, *petsc_x;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6; // mis à jour le 13/10/22 
     //double *vec_dev = malloc(1000 * sizeof(double)); // sauvegarder les 1000 résultats obtenus
+
+    // itérer et trouver la meilleure valeur de rho pour résoudre le problème
 
     for (u=0; u < iter_max; u++) {
 

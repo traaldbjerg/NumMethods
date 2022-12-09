@@ -27,8 +27,6 @@ void solve_petsc(int n, int *ia, int *ja, double *a, double *b, double **x) {
 
     for (int i = 0; i < n; i++) {ixn[i] = i; }
 
-    //printf("Hello\n"); // debug
-
     // déclarer les variables
     Mat A;
     Vec vec_b;
@@ -56,6 +54,8 @@ void solve_petsc(int n, int *ia, int *ja, double *a, double *b, double **x) {
     KSPSetFromOptions(ksp);
 
     KSPGetPC(ksp, &pc); // lancer contexte pour le préconditionneur
+    PCSetType(pc, PCILU);
+    KSPSetTolerances(ksp, 1.e-15, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
 
     double tc5 = mytimer_cpu(); double tw5 = mytimer_wall();
 
@@ -71,4 +71,5 @@ void solve_petsc(int n, int *ia, int *ja, double *a, double *b, double **x) {
     VecGetArray(vec_x, x);
 
    ierr = PetscFinalize();
+
 }
