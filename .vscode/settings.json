@@ -1,6 +1,8 @@
 {
     "python.analysis.typeCheckingMode": "basic",
     "files.associations": {
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "petscksp.h": "c",
+        "petscvec.h": "c"
     }
 }
