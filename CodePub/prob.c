@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 
-int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*source_func)(double, double, double), double temp, int write) // on rajoute la fonction source en argument
+int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*source_func)(double, double, double), double source_value, int write) // on rajoute la fonction source en argument
 /*
    But
    ===
@@ -19,7 +19,8 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
 
   avec les conditions aux limites de Dirichlet
          
-         u = 20     sur (0,y)                 , avec 0 <=  y  <= 1
+         u = 20     sur (0,y)                 , avec 3 <=  y  <= 4 [m]
+         u = 0      sur (x, 0)                , avec 1.5 <= x <= 4 [m]
          du/dn = 1  sur (1,y), (x,0) et (x,1) , avec 0 <= x,y <= 1 .
 
   La numérotation des inconnues est lexicographique, la direction x étant 
@@ -30,7 +31,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
   =========
   m  (input)  - nombre de points par direction dans la grille
                 (les valeurs m inférieures à 2 ne sont pas valides) 
-  n  (output) - pointeur vers le nombre d'inconnus dans le système
+  n  (output) - pointeur vers le nombre d'inconnues dans le système
   ia (output) - pointeur vers le tableau 'ia' de la matrice A
   ja (output) - pointeur vers le tableau 'ja' de la matrice A
   a  (output) - pointeur vers le tableau 'a' de la matrice A
@@ -85,47 +86,29 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
 
     // remplissage de la matrice
 
-    //int nnz_save = nnz;
-
     for (iy = 0; iy < m; iy++) { // vertical
-        //printf("\n\nLine: %d", iy);
         for (ix = 0; ix < m; ix++) { // horizontal
             if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
                 /* marquer le début de la ligne suivante dans le tableau 'ia' */
                 (*ia)[ind] = nnz;
 
                 /* calculer le membre de droite */
-                (*b)[ind] = source_func(ix * L / (q * 11), iy * L / (q * 11), temp); /* rho = temp locale */
+                (*b)[ind] = source_func(ix * L / (q * 11), iy * L / (q * 11), source_value); /* rho = temp locale */
 
                 /* remplissage de la ligne : voisin sud */
                     if (iy == m-1 || (iy == q * 6 && ix > q * 3)) { /* condition de Neumann, bord nord + attention au rectangle retiré */
                                                         // strictement supérieur implique que le coin 'intérieur' sans normale n'est pas traité avec une condition de Neumann
                         (*a)[nnz] = -2*invh2;
-
-                        //printf("a");
-
-                        if (iy == q * 6 || iy == q * 6 + 1) {
-                            (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire une inconnue
-                        } else if ((q * 6 < iy) && (iy <= q * 8)) { // en face de la porte
-                            (*ja)[nnz] = ind - q * 3; // il y a moins d'inconnues sur cette bande => il faut moins diminuer les indices
-                        } else if (q * 8 < iy) {
-                            (*ja)[nnz] = ind - q * 3 - 1; // diminuer d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
-                        } else if (iy == 1 && ix < q * 3) {
-                            (*ja)[nnz] = ind - 6 * q - 1; // la fenêtre diminue le nombre de points sur lesquels il faut retourner
-                        } else {
-                            (*ja)[nnz] = ind - m; // sinon il y a m points dans la liste avant d'arriver au point spatialement en dessous
-                        }
+                        if (iy == m-1)
+                            (*ja)[nnz] = ind - 3*q - 1; // sinon il y a m points dans la liste avant d'arriver au point spatialement en dessous
+                        else
+                            (*ja)[nnz] = ind - m + 1; // +1 à cause de la porte
                         nnz++;
-                        //(*ja)[nnz] = ind - m; // les m indiquent qu'on parle du point spatialement au-dessus
-                        //nnz++;
                     } else if (iy > 0) { /* milieu du domaine */
                         if (iy == q * 8 + 1 && ix == 0) { // JUSTE AU DESSUS DE LA PORTE
                             (*b)[ind] += Tp*invh2;
                         } else if (!(iy == 1 && (q * 3 <= ix) && (ix <= q * 8))) { // IL NE FAUT RIEN FAIRE AU DESSUS DE LA FENETRE PUISQUE TF = 0
                             (*a)[nnz] = -invh2;
-
-                            //printf("b");
-
                             if (iy == q * 6 || iy == q * 6 + 1) {
                                 (*ja)[nnz] = ind - m + 1; // dirichlet de la porte retire une inconnue
                             } else if ((q * 6 < iy) && (iy <= q * 8)) { // en face de la porte
@@ -143,7 +126,6 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
 
                 /* remplissage de la ligne : voisin ouest */
                     if (ix == m-1 || ((iy > q * 6 && ix == q * 3))) { /* condition de Neumann, bord est + attention au rectangle retiré*/   
-                        //printf("c");
                         (*a)[nnz] = -2*invh2; 
                         (*ja)[nnz] = ind - 1;
                         nnz++;
@@ -173,7 +155,6 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
                         (*ja)[nnz] = ind + 1;
                         nnz++;
                     } else if (ix < m-1) { /* milieu du domaine */
-                        //printf("d");
                         if (!(iy == 0 && ix == 3 * q - 1)) { // on saute le point juste à gauche de la fenêtre, puisque Tf = 0 Dirichlet ne fait rien
                             (*a)[nnz] = -invh2;
                             (*ja)[nnz] = ind + 1;
@@ -183,26 +164,17 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
 
                 /* remplissage de la ligne : voisin nord */
                     if (iy == 0) { /* condition de Neumann, bord sud */
-                        //printf("e");
                         (*a)[nnz] = -2*invh2; 
-                        //(*ja)[nnz] = ind + m;
-
-                        //if ((q * 6 <= iy) && (iy < q * 8)) {
-                            //(*ja)[nnz] = ind + q * 3; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
                         if (iy == 0 && ix < q * 3) {
-                             (*ja)[nnz] = ind + q * 6;
-                        //} else if (q * 8 <= iy) {
-                            //(*ja)[nnz] = ind + q * 3 + 1; // augmenter d'un de plus car la condition de Dirichlet ne fait pas perdre une inconnue
+                            (*ja)[nnz] = ind + q * 6;
                         } else {
                             (*ja)[nnz] = ind + m; // sinon il y a m points dans la liste avant d'arriver au point spatialement au dessus
                         }
                         nnz++;
                     } else if (ix == 0 && iy == q * 6 - 1) { // juste en dessous de la porte
-                        //printf("f");
                         (*b)[ind] += Tp*invh2;
                     } else if (iy < m - 1 && !((iy == q*6) && (q*3 < ix))) { /* milieu du domaine */
                         (*a)[nnz] = -invh2;
-                        //(*ja)[nnz] = ind + m;
 
                         if ((q * 6 < iy) && (iy < q * 8)) {
                             (*ja)[nnz] = ind + q * 3; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
@@ -218,15 +190,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
                 // prochaine equation
                 ind++;
             }
-            //ind++;
-
-            /*printf(" %d ", ix);
-            for (int i = nnz_save; i < nnz; i++) {
-                printf("\n%d", (*ja)[i]);
-            }
-            nnz_save = nnz;*/
         }
-
     }
 
     //printf("%d", nnz);
