@@ -14,8 +14,8 @@ L7 = SuiteSparse/metis-4.0/libmetis.a
 L8 = SuiteSparse/SuiteSparse_config/libsuitesparseconfig.a
 LIB1 = $(L1) $(L2) $(L3) $(L4) $(L5) $(L6) $(L7) $(L8) -lm -lblas -llapack
 
-L9 = petsc/arch-linux-c-debug/lib/libpetsc.so
-LIB2 = $(L9)
+#L9 = petsc/arch-linux-c-debug/lib/libpetsc.so
+#LIB2 = $(L9)
 
 COPT = -O3 -Wall
 
@@ -35,21 +35,21 @@ clean:
 	rm *.o 
 	rm main
 
-main: main.c prob.o time.o  umfpack.o residue.o rho.o heatflux.o petsc.o
-	cc -g $(COPT) $^ -o $@ $(LIB1) $(LIB2) -Ipetsc/include -Ipetsc/arch-linux-c-debug/include
+main: main.c prob.o time.o  umfpack.o residue.o rho.o heatflux.o gs.o #petsc.o
+	cc -g $(COPT) $^ -o $@ $(LIB1) $(LIB2)
 
 umfpack.o: umfpack.c
 	cc -g $(COPT) -c $< -o $@ -ISuiteSparse/UMFPACK/Include \
   -ISuiteSparse/SuiteSparse_config  -ISuiteSparse/AMD/Include
 
-petsc.o: petsc.c
-	cc -g $(COPT) -c $< -o $@ $(LIB2) -Ipetsc/include -Ipetsc/arch-linux-c-debug/include
+#petsc.o: petsc.c
+#	cc -g $(COPT) -c $< -o $@ $(LIB2) -Ipetsc/include -Ipetsc/arch-linux-c-debug/include
 
 #-Ipetsc/include -Ipetsc/arch-linux-c-debug/include -Lpetsc/arch-linux-c-debug/include/petscconf.h -Lpetsc/lib -lpetsc -lpetscsys -lpetscksp
 
 %.o: %.c
 	cc -g $(COPT) -c $< -o $@
 
-include ${PETSC_DIR}/lib/petsc/conf/variables
+#include ${PETSC_DIR}/lib/petsc/conf/variables
 #include ${PETSC_DIR}/lib/petsc/conf/rules
 #include ${PETSC_DIR}/lib/petsc/conf/tests

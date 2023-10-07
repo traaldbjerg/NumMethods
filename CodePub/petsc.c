@@ -20,7 +20,6 @@ void solve_petsc(int n, int *ia, int *ja, double *a, double *b, double **x) {
     //DM da;
     PC pc;
     
-
     int nnz = ia[n];
     int *ixn = malloc(n * sizeof(int));
     int *ixnnz = malloc(nnz * sizeof(int));
@@ -31,8 +30,6 @@ void solve_petsc(int n, int *ia, int *ja, double *a, double *b, double **x) {
     Mat A;
     Vec vec_b;
     Vec vec_x;
-
-
 
     MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, n, n, ia, ja, a, &A);
 

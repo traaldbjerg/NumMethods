@@ -34,7 +34,7 @@ L'itération peut être désactivée en assignant iter_max à 0.
         meilleur std_dev/avg: 0.367950 pour source_value = 174.000
         meilleur std_dev: 5.050443 pour source_value = 67.000
 
-    En se basant sur le critère d'écart-type, il semblerait que le radiateur en haut de la pièce mène à la configuration de température la plus uniforme.
+    En se basant sur le critère d'écart-type, il semblerait que le radiateur en bas de la pièce mène à la configuration de température la plus uniforme.
 
     Visuellement, std_dev/avg semble être un meilleur critère d'uniformité.
     C'est logique étant donné que ce critère ne pénalise pas particulièrement les hautes températures.

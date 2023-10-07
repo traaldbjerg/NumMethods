@@ -1,7 +1,7 @@
 import ast
 
-with open("exmat/ja.23.2.txt", "r") as napov_ja:
-    with open("mat/ja.txt", "r") as ja:
+with open("exmat/ia.23.txt", "r") as napov_ja:
+    with open("mat/ia.txt", "r") as ja:
         lines_napov = napov_ja.readlines()
         lines_ja = ja.readlines()
         

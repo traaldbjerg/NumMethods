@@ -3,6 +3,7 @@
     "files.associations": {
         "stdio.h": "c",
         "petscksp.h": "c",
-        "petscvec.h": "c"
+        "petscvec.h": "c",
+        "rho.h": "c"
     }
 }

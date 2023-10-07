@@ -7,9 +7,10 @@
 #include "residue.h"
 #include "rho.h"
 #include "heatflux.h"
-#include "petsc.h"
+#include "gs.h"
 
-// Fonction main 
+
+// Fonction main
 
 int main(int argc, char *argv[])
 {
@@ -19,10 +20,10 @@ int main(int argc, char *argv[])
     double (*rho_ptr)(double, double, double) = &rho;
     int m = 166;
     int u = 0;
-    int iter_max = 1000; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
+    int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int q = (m-1) / 11;
-    int use_petsc = 1; // activer ou déactiver l'utilisation de PETSc
-    double source_value = 0.00; // permet d'itérer sur les différentes valeurs de rho pour 
+    int use_petsc = 0; // activer ou déactiver l'utilisation de PETSc
+    double source_value = 500.0 ; // permet d'itérer sur les différentes valeurs de rho pour 
     double flux_x, flux_y, rad_flux;
     double source_save;
     double save_dev;
@@ -38,7 +39,7 @@ int main(int argc, char *argv[])
 
     for (u=0; u < iter_max; u++) {
 
-        // générér le problème
+        // générer le problème
 
         if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr, source_value, 0)) // source_value permet de lancer des simus de problèmes différents
             return 1;
@@ -134,10 +135,10 @@ int main(int argc, char *argv[])
         source_value = source_save; // on assigne source_value à la meilleure solution
     // sinon on va résoudre avec source_value
 
-    printf("Meilleure valeur de rho: %f [K/m2]   Meilleur écart-type/moyenne: %f [-]", source_save, save_dev);
+    //printf("Meilleure valeur de rho: %f [K/m2]   Meilleur écart-type/moyenne: %f [-]\n", source_save, save_dev);
 
     // on a trouvé la meilleure temp du radiateur, on la re-résout pour pouvoir l'afficher ensuite (plus économe que de faire plein de fois de l'écriture de fichier)
-    // alternativement, on aurait pû créer un array save_x dont on remplace les valeurs à chaque fois que l'écart-type/moyenne associé à x est meilleur
+    // alternativement, on aurait pu créer un array save_x dont on remplace les valeurs à chaque fois que l'écart-type/moyenne associé à x est meilleur
 
     if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr, source_value, 1)) // source_value permet de lancer des simus de problèmes différents
         return 1;
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
 
     // allouer la mémoire pour le vecteur de solution 
 
-    x = malloc(n * sizeof(double));
+    x = calloc(1, n * sizeof(double));
     if ( x == NULL ) {
     printf("\n ERREUR : pas de mémoire pour vecteur des solutions\n\n");
         return 1;
@@ -163,33 +164,28 @@ int main(int argc, char *argv[])
 
     // calculer flux par la fenêtre, la porte et la puissance du radiateur
 
-    compute_heat_flux(m, q, &x, source_save, &flux_x, &flux_y, &rad_flux, rho_ptr); // void qui modifie directement les variables de flux
+    //compute_heat_flux(m, q, &x, source_save, &flux_x, &flux_y, &rad_flux, rho_ptr); // void qui modifie directement les variables de flux
 
-    printf("\nValeur des 2 flux: (%f, %f) [W]\n", flux_x, flux_y);
-    printf("Puissance du radiateur et flux entrant/sortant: %f, %f\n", rad_flux, fabs(flux_x + flux_y));
-    printf("Proportion puissance/flux: %f\n", rad_flux/fabs(flux_x + flux_y));
+    //printf("\nValeur des 2 flux: (%f, %f) [W]\n", flux_x, flux_y);
+    //printf("Puissance du radiateur et flux entrant/sortant: %f, %f\n", rad_flux, fabs(flux_x + flux_y));
+    //printf("Proportion puissance/flux: %f\n", rad_flux/fabs(flux_x + flux_y));
 
     // sauvegarder le vecteur solution pour faciliter la comparaison, principalement pour debug
 
     
     FILE *f_out = fopen("mat/out_umfpack.dat", "w");
 
-    
     // créer le fichier de sortie pour gnuplot
 
     int i = 0;
     avrg = 0.0; // construit pour donner la moyenne
     dim = 0; // taille de l'échantillon
 
-    for (int iy = 0; iy < m; iy++) { // vertical
-        for (int ix = 0; ix < m; ix++) { // horizontal
-            if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
+    for (int iy = 1; iy < m-1; iy++) { // vertical
+        for (int ix = 1; ix < m-1; ix++) { // horizontal
+            if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
                 fprintf(f_out, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
                 i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
-            } else if ((iy == 0 && (q * 3 <= ix) && (ix <= q * 8))) { // il faut aussi représenter la fenêtre, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                fprintf(f_out, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), 0.0); 
-            } else if (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)) { // il faut aussi représenter la porte, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                fprintf(f_out, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), 20.0);
             }
         }
         fprintf(f_out, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
@@ -211,11 +207,9 @@ int main(int argc, char *argv[])
     printf("\nTemps de calcul du résidu UMFPACK (CPU): %5.1f sec",tc4-tc3);
     printf("\nTemps de calcul du résidu UMFPACK (horloge): %5.1f sec \n",tw4-tw3);
 
-
-
     // comparer avec les routines PETSc
 
-    if (use_petsc) { // si on veut utiliser PETSc
+    /*if (use_petsc) { // si on veut utiliser PETSc
 
         petsc_x = malloc(n * sizeof(double));
         solve_petsc(n, ia, ja, a, b, &petsc_x); // construire les vecteurs/matrices + résoudre
@@ -259,7 +253,7 @@ int main(int argc, char *argv[])
 
         //free(petsc_x); // bug si déallouage de petsc_x :(
 
-    }
+    }*/
 
     free(ia); free(ja); free(a); free(b); free(x); //free(vec_dev); 
     system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce

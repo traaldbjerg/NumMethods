@@ -46,12 +46,35 @@ void compute_heat_flux(int m, int q, double **x, double source, double *sum_grad
     // il faut une méthode des trapèzes 2D -> on interpole sur l'interpolation?
     // rho constante donc uniquement intéressant pour points à l'extrémité
 
-    *rad_power = 0.0;
+    /**rad_power = 0.0;
 
     for (int iy = 1; iy < q*6; iy++) { // inégalités strictes -> on ne prend pas en compte les points sur le demi-périmètre supérieur droit -> intégrale respectée
         for (int ix = q * 3; ix < q*8; ix++) {
             //if (ix == q*3 || iy)
             *rad_power += (*source_func)(ix*h, iy*h, source) * k * h * h; // h2 pour l'élément de surface dS
+        }
+    }
+    */
+
+    *rad_power = 0.0;
+    int has_been_over_radiator = 0;
+    double to_add;
+
+    for (int iy = 1; iy < q*6; iy++) { // inégalités strictes -> on ne prend pas en compte les points sur le demi-périmètre supérieur droit -> intégrale respectée
+        for (int ix = q * 3; ix < q*8; ix++) {
+            to_add = (*source_func)(ix*h, iy*h, source) * k * h * h; // h2 pour l'élément de surface dS
+            if (to_add == 0.0) {
+                break; // si on n'est pas sur le radiateur pas besoin de finir l'itération horizontale
+            } else *rad_power += to_add;
+        }
+
+        if (to_add == 0.0 && has_been_over_radiator) { // quand on a dépassé le radiateur
+            iy -= 1; // on retourne à la ligne précédente
+            for (int ix = q * 3; ix < q*8; ix++) { // on retire toutes les contributions de la ligne supérieure du radiateur pour ne pas considérer une surface trop grande
+                to_add = (*source_func)(ix*h, iy*h, source) * k * h * h;
+                *rad_power -= to_add;
+            }
+            break; // pas besoin de continuer à monter verticalement
         }
     }
 
