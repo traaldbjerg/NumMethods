@@ -9,7 +9,6 @@
 #include "heatflux.h"
 #include "gs.h"
 
-
 // Fonction main
 
 int main(int argc, char *argv[])
@@ -31,13 +30,13 @@ int main(int argc, char *argv[])
     int dim;
     double L = 5.5;
     int n, *ia, *ja; 
-    double *a, *b, *x, *petsc_x;
+    double *a, *b, *x, *gs_x;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6; // mis à jour le 13/10/22 
     //double *vec_dev = malloc(1000 * sizeof(double)); // sauvegarder les 1000 résultats obtenus
 
     // itérer et trouver la meilleure valeur de rho pour résoudre le problème
 
-    for (u=0; u < iter_max; u++) {
+    /*for (u=0; u < iter_max; u++) {
 
         // générer le problème
 
@@ -134,7 +133,7 @@ int main(int argc, char *argv[])
     if (iter_max != 0) // si on a itéré
         source_value = source_save; // on assigne source_value à la meilleure solution
     // sinon on va résoudre avec source_value
-
+    */
     //printf("Meilleure valeur de rho: %f [K/m2]   Meilleur écart-type/moyenne: %f [-]\n", source_save, save_dev);
 
     // on a trouvé la meilleure temp du radiateur, on la re-résout pour pouvoir l'afficher ensuite (plus économe que de faire plein de fois de l'écriture de fichier)
@@ -148,10 +147,12 @@ int main(int argc, char *argv[])
     // allouer la mémoire pour le vecteur de solution 
 
     x = calloc(1, n * sizeof(double));
+    gs_x = calloc(1, n * sizeof(double));
     if ( x == NULL ) {
     printf("\n ERREUR : pas de mémoire pour vecteur des solutions\n\n");
         return 1;
     }
+
 
     // résoudre et mesurer le temps de solution 
 
@@ -183,7 +184,7 @@ int main(int argc, char *argv[])
 
     for (int iy = 1; iy < m-1; iy++) { // vertical
         for (int ix = 1; ix < m-1; ix++) { // horizontal
-            if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
+            if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
                 fprintf(f_out, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
                 i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
             }
@@ -200,12 +201,21 @@ int main(int argc, char *argv[])
     tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
     double res_umfpack = residue(&n, &ia, &ja, &a, &b, &x);
+    double res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x);
+    int w = 0;
+    while (res_gs > 0.0000000000001) {
+        w++;
+        //forward_gauss_seidel(n, ia, ja, a, b, &gs_x);
+        fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+        res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x);
+        printf("Residue is %.10e\n", res_gs);
+    }
     printf("\nRésidu de la solution: %.10e\n", res_umfpack);
 
     tc4 = mytimer_cpu(); tw4 = mytimer_wall();
 
-    printf("\nTemps de calcul du résidu UMFPACK (CPU): %5.1f sec",tc4-tc3);
-    printf("\nTemps de calcul du résidu UMFPACK (horloge): %5.1f sec \n",tw4-tw3);
+    printf("\nTemps de solution, Gauss-Seidel (CPU): %5.1f sec",tc4-tc3);
+    printf("\nTemps de solution, Gauss-Seidel (horloge): %5.1f sec \n",tw4-tw3);
 
     // comparer avec les routines PETSc
 

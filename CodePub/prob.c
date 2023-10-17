@@ -9,7 +9,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
    ===
    Générer le système linéaire n x n 
                           
-                             Au = b                                   
+                             Au = b 
 
    qui correspond à la discrétisation sur une grille cartésienne 
    régulière m x m de l'équation de Poisson à deux dimensions
