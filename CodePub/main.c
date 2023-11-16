@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     // déclarer les variables 
 
     double (*rho_ptr)(double, double, double) = &rho;
-    int m = 166;
+    int m = 23;
     int u = 0;
     int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int q = (m-1) / 11;
@@ -173,7 +173,6 @@ int main(int argc, char *argv[])
 
     // sauvegarder le vecteur solution pour faciliter la comparaison, principalement pour debug
 
-    
     FILE *f_out = fopen("mat/out_umfpack.dat", "w");
 
     // créer le fichier de sortie pour gnuplot
@@ -194,20 +193,20 @@ int main(int argc, char *argv[])
 
     fclose(f_out); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
 
-
     printf("\nTemps de solution, UMFPACK (CPU): %5.1f sec",tc2-tc1); // mis à jour le 13/10/22 
     printf("\nTemps de solution, UMFPACK (horloge): %5.1f sec \n",tw2-tw1); // mis à jour le 13/10/22 
 
     tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
-    double res_umfpack = residue(&n, &ia, &ja, &a, &b, &x);
-    double res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x);
-    int w = 0;
+    double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    double res_umfpack = residue(&n, &ia, &ja, &a, &b, &x, &r);
+    double res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    int w = 0; 
     while (res_gs > 0.0000000000001) {
         w++;
-        //forward_gauss_seidel(n, ia, ja, a, b, &gs_x);
         fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-        res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x);
+        res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &r);
         printf("Residue is %.10e\n", res_gs);
     }
     printf("\nRésidu de la solution: %.10e\n", res_umfpack);

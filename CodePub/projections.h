@@ -1,1 +1,1 @@
-void restriction();
+void restriction(int old_m, double L, int *old_n, int **ia, int **ja, double **a, double **b, double **x, double **r);

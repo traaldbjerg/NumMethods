@@ -60,7 +60,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
         - nb_dir; // number of points on the walls
     //*n = 1;
     //printf("Hello\n");
-    printf("Value of n: %d\n", *n); // \n is necessary, otherwise the buffer is not flushed
+    //printf("Value of n: %d\n", *n); // \n is necessary, otherwise the buffer is not flushed
     //nnz = 5 * (m-1) * m - 4 * m+2; /* nombre d'éléments non nuls */
     nnz = 5 * (m * m - (5 * q) * (8 * q) - p) // points soumis à l'équation de la chaleur classique sans conditions particulières (on retire le rectangle supérieur droit)
         - 5 * nb_next_to_wall // we also need to remove the points directly in front of a wall (because of the dirichlet condition)
