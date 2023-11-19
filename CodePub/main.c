@@ -8,6 +8,7 @@
 #include "rho.h"
 #include "heatflux.h"
 #include "gs.h"
+#include "projections.h"
 
 // Fonction main
 
@@ -17,7 +18,7 @@ int main(int argc, char *argv[])
     // déclarer les variables 
 
     double (*rho_ptr)(double, double, double) = &rho;
-    int m = 23;
+    int m = 23; // 
     int u = 0;
     int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int q = (m-1) / 11;
@@ -153,15 +154,15 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-
     // résoudre et mesurer le temps de solution 
 
     tc1 = mytimer_cpu(); tw1 = mytimer_wall(); // mis à jour le 13/10/22
     if ( solve_umfpack(n, ia, ja, a, b, x) ) {
-        free(ia); free(ja); free(a); free(b);free(x); // empêche leak de mémoire en cas d'erreur
+        free(ia); free(ja); free(a); free(b); free(x); // empêche leak de mémoire en cas d'erreur
         return 1;
     }
     tc2 = mytimer_cpu(); tw2 = mytimer_wall(); // mis à jour le 13/10/22
+
 
     // calculer flux par la fenêtre, la porte et la puissance du radiateur
 
@@ -203,10 +204,10 @@ int main(int argc, char *argv[])
     double res_umfpack = residue(&n, &ia, &ja, &a, &b, &x, &r);
     double res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
     int w = 0; 
-    while (res_gs > 0.0000000000001) {
+    while (res_gs > 0.001) {
         w++;
         fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-        res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &r);
+        res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
         printf("Residue is %.10e\n", res_gs);
     }
     printf("\nRésidu de la solution: %.10e\n", res_umfpack);
@@ -215,6 +216,54 @@ int main(int argc, char *argv[])
 
     printf("\nTemps de solution, Gauss-Seidel (CPU): %5.1f sec",tc4-tc3);
     printf("\nTemps de solution, Gauss-Seidel (horloge): %5.1f sec \n",tw4-tw3);
+
+    printf("Initial residue\n\n\n");
+    for (int i = 0; i < n; i++) {
+        printf("%f\n", gs_r[i]);
+    }
+    if ((m - 1) % 2 != 0) {
+        printf("old_m: %d\n", m);
+        printf("Error: old_m must be odd\n");
+        exit(1);
+    }
+
+    // restriction to the coarse grid
+    int m_coarse = (m-1)/2 + 1;
+    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+            - p_coarse; // number of points on the walls
+
+    //printf("n_coarse: %d\n", n_coarse);
+    double *restr_r = malloc(n_coarse * sizeof(double));
+    restriction(m_coarse, q_coarse, &n_coarse, &ia, &ja, &a, &b, &gs_x, &gs_r, &restr_r);
+    //printf("Restricted residue\n\n\n");
+    for (int i = 0; i < n_coarse; i++) {
+        printf("%f\n", restr_r[i]);
+    }
+
+    // solve the coarse problem
+    // generate the coarse matrix
+
+    int *ia_coarse, *ja_coarse; 
+    double *a_coarse, *b_coarse, *r_coarse, *gs_x_coarse;
+    //double *alt_b_coarse = calloc(1, n_coarse * sizeof(double));
+    if (prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, rho_ptr, source_value, 0))
+        return 1;
+    printf("\nPROBLEM: ");
+    printf("m = %5d   n = %8d  nnz = %9d\n", m_coarse, n_coarse, ia_coarse[n_coarse]);
+
+    r_coarse = malloc(n_coarse * sizeof(double));
+
+    if (solve_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse, restr_r, r_coarse)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
+                                                                                      // which we will use to compute the prolongation
+        free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r_coarse); // prevents memory leak
+        return 1;
+    }
+
+    double *r_prol = malloc(n * sizeof(double));
+ 
 
     // comparer avec les routines PETSc
 
@@ -264,7 +313,8 @@ int main(int argc, char *argv[])
 
     }*/
 
-    free(ia); free(ja); free(a); free(b); free(x); //free(vec_dev); 
+    free(ia); free(ja); free(a); free(b); free(x); free(r); free(gs_r); free(restr_r); 
+    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r_coarse); free(gs_x_coarse);
     system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     
     return 0;
