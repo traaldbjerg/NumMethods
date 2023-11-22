@@ -74,7 +74,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
         ;
 
     //nnz = 5 * *n - 1 * 4 * (m - 2); // nombre d'éléments non nuls
-    printf("Value of nnz: %d\n", nnz);
+    //printf("Value of nnz: %d\n", nnz);
     /* allocation des tableaux */
 
     *ia  = malloc((*n + 1) * sizeof(int));
