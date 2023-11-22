@@ -209,7 +209,6 @@ int main(int argc, char *argv[])
     res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
     printf("Pre-smoothing residue is %.10e\n", res_gs);
     int w = 0;
-    printf("Initial residue is %.10e\n", res_gs);
 
     tc4 = mytimer_cpu(); tw4 = mytimer_wall();
 
@@ -245,7 +244,7 @@ int main(int argc, char *argv[])
     // generate the coarse matrix
 
     int *ia_coarse, *ja_coarse; 
-    double *a_coarse, *b_coarse, *r_coarse, *gs_x_coarse;
+    double *a_coarse, *b_coarse, *r_coarse;
     if (prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, rho_ptr, source_value, 0))
         return 1;
     //printf("\nPROBLEM: ");
@@ -266,8 +265,8 @@ int main(int argc, char *argv[])
     //construct the x vector from this improvement to the residue
 
     for (int i = 0; i < n; i++) {
-        printf("gs_x[%d]: %f\n", i, gs_x[i]);
-        printf("r_prol[%d]: %f\n", i, r_prol[i]);
+        //printf("gs_x[%d]: %f\n", i, gs_x[i]); // debug
+        //printf("r_prol[%d]: %f\n", i, r_prol[i]); // debug
         gs_x[i] += r_prol[i];
     }
 
@@ -276,60 +275,15 @@ int main(int argc, char *argv[])
 
     double two_grid_residue = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r); 
 
-    printf("Two-grid residue: %f\n", two_grid_residue);
-
-    // comparer avec les routines PETSc
-
-    /*if (use_petsc) { // si on veut utiliser PETSc
-
-        petsc_x = malloc(n * sizeof(double));
-        solve_petsc(n, ia, ja, a, b, &petsc_x); // construire les vecteurs/matrices + résoudre
-        
-
-        // créer le fichier de sortie pour gnuplot
-
-        FILE *f_out_petsc = fopen("mat/out_petsc.dat", "w");
-        i = 0;
-        avrg = 0.0; // construit pour donner la moyenne
-        dim = 0; // taille de l'échantillon
-
-        for (int iy = 0; iy < m; iy++) { // vertical
-            for (int ix = 0; ix < m; ix++) { // horizontal
-                if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
-                    fprintf(f_out_petsc, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (petsc_x)[i]);
-                    i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
-                } else if ((iy == 0 && (q * 3 <= ix) && (ix <= q * 8))) { // il faut aussi représenter la fenêtre, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                    fprintf(f_out_petsc, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), 0.0); 
-                } else if (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)) { // il faut aussi représenter la porte, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                    fprintf(f_out_petsc, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), 20.0);
-                }
-            }
-            fprintf(f_out_petsc, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
-        }
-
-        fclose(f_out_petsc); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
-
-
-        tc5 = mytimer_cpu(); tw5 = mytimer_wall();
-
-        double r_petsc = residue(&n, &ia, &ja, &a, &b, &petsc_x);
-        printf("\nRésidu de la solution PETSc: %.10e\n", r_petsc);
-
-        tc6 = mytimer_cpu(); tw6 = mytimer_wall();
-
-        printf("\nTemps de calcul du résidu PETSc (CPU): %5.1f sec",tc4-tc3);
-        printf("\nTemps de calcul du résidu PETSc (horloge): %5.1f sec \n",tw4-tw3);
-
-        system("gnuplot -persist \"heatmap_petsc_solution.gnu\""); // laisser gnuplot afficher la température de la pièce
-
-        //free(petsc_x); // bug si déallouage de petsc_x :(
-
-    }*/
+    printf("Two-grid residue: %f\n", two_grid_residue); 
 
     // créer le fichier de sortie pour gnuplot 
 
     FILE *f_out_two = fopen("mat/out_two_grid.dat", "w");
-    
+
+
+    i = 0;
+
     for (int iy = 1; iy < m-1; iy++) { // vertical
         for (int ix = 1; ix < m-1; ix++) { // horizontal
             if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
@@ -341,9 +295,10 @@ int main(int argc, char *argv[])
     }
 
     fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
+    //sleep(1); // permet à gnuplot de lire le fichier avant de le supprimer
 
     free(ia); free(ja); free(a); free(b); free(x); free(r); free(gs_r); free(gs_x); free(restr_r); 
-    //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r_coarse);
+    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); //free(r_coarse);
     system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     system("gnuplot -persist \"heatmap_two_grid.gnu\"");
     

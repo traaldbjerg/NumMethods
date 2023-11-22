@@ -5,7 +5,7 @@ void restriction(int m, int q, int *n, int **ia, int **ja, double **a, double **
     int m_fine = (m-1)*2 + 1; // number of points in a row of the fine grid
     int q_fine = (m_fine-1)/11; // number of points in a row of the fine grid in the small rectangle
     int i_hole = (m_fine-2)*(q_fine*5+1); // index of start of the row "of the hole" in the big rectangle
-    printf("This is i_hole = %d\n", i_hole); // debug
+    //printf("This is i_hole = %d\n", i_hole); // debug
 
     //restriction of the residue to the coarse grid
     int jump = m_fine-1; // when a row is jumped (wall hit), we need to keep track of it + also keep track of the consecutive points in front of a wall
@@ -15,7 +15,7 @@ void restriction(int m, int q, int *n, int **ia, int **ja, double **a, double **
     //fill restricted residue vector
     for (int i = 0; i < *n; i++) {
         (*r_restr)[i] = (*r)[2*i + jump];
-        printf("This is r[%d] = %f\n", 2*i+jump, (*r)[2*i+jump]); // debug
+        //printf("This is r[%d] = %f\n", 2*i+jump, (*r)[2*i+jump]); // debug
         if (((2*i+jump+2) % (m_fine-2) == 0) && (i != 0) && ((2*i+jump) <= i_hole)) { // if we are in the bigger rectangle of the room
             jump += m_fine-1; // m because m-2 points per row, plus the last of the previous coarse line and the first of the next coarse line
         } 
