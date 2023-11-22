@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     printf("\nTemps de solution, UMFPACK (CPU): %5.1f sec",tc2-tc1); // mis à jour le 13/10/22 
     printf("\nTemps de solution, UMFPACK (horloge): %5.1f sec \n",tw2-tw1); // mis à jour le 13/10/22 
 
-    tc3 = mytimer_cpu(); tw3 = mytimer_wall();
+    //tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
@@ -218,10 +218,10 @@ int main(int argc, char *argv[])
     printf("\nTemps de solution, Gauss-Seidel (CPU): %5.1f sec",tc4-tc3);
     printf("\nTemps de solution, Gauss-Seidel (horloge): %5.1f sec \n",tw4-tw3);
     */
-    //printf("Initial residue\n\n\n");
-    //for (int i = 0; i < n; i++) {
-    //    printf("%f\n", gs_r[i]);
-    //}
+    printf("Initial residue\n\n\n");
+    for (int i = 0; i < n; i++) {
+        printf("%f\n", gs_r[i]);
+    }
     if ((m - 1) % 2 != 0) {
         printf("old_m: %d\n", m);
         printf("Error: old_m must be odd\n");
@@ -235,8 +235,8 @@ int main(int argc, char *argv[])
     int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
             - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
             - p_coarse; // number of points on the walls
-    fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
     //printf("n_coarse: %d\n", n_coarse);
     double *restr_r = malloc(n_coarse * sizeof(double));
     restriction(m_coarse, q_coarse, &n_coarse, &ia, &ja, &a, &b, &gs_x, &gs_r, &restr_r);
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 
     double *r_prol = malloc(n * sizeof(double));
 
-    prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
+    /*prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
 
     //construct the x vector from this improvement to the residue
 
@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
         //free(petsc_x); // bug si déallouage de petsc_x :(
 
     }*/
-
+/*
     FILE *f_out_two = fopen("mat/out_two_grid.dat", "w");
     
     for (int iy = 1; iy < m-1; iy++) { // vertical
@@ -343,11 +343,11 @@ int main(int argc, char *argv[])
     }
 
     fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
-
+*/
     free(ia); free(ja); free(a); free(b); free(x); free(r); free(gs_r); free(restr_r); 
     free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r_coarse); free(gs_x_coarse);
     system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
-    system("gnuplot -persist \"heatmap_two_grid.gnu\"");
+    //system("gnuplot -persist \"heatmap_two_grid.gnu\"");
     
     return 0;
 }

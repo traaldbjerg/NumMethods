@@ -2,29 +2,27 @@ void restriction(int m, int q, int *n, int **ia, int **ja, double **a, double **
     /*function which restricts the fine residue to a coarser grid*/
 
     // get the new amount of points, variables and so forth
-    
-    int i_hole = (m-2)*q*6; // index of start of the row "of the hole" in the big rectangle
+    int m_fine = (m-1)*2 + 1; // number of points in a row of the fine grid
+    int q_fine = (m_fine-1)/11; // number of points in a row of the fine grid in the small rectangle
+    int i_hole = (m_fine-2)*(q_fine*5+1); // index of start of the row "of the hole" in the big rectangle
+    printf("This is i_hole = %d\n", i_hole); // debug
 
     //restriction of the residue to the coarse grid
-    int jump = 0; // when a row is jumped (wall hit), we need to keep track of it + also keep track of the consecutive points in front of a wall
+    int jump = m_fine-1; // when a row is jumped (wall hit), we need to keep track of it + also keep track of the consecutive points in front of a wall
+                    // starts at m-1 because the first row is jumped, as it only contains fine points and no coarse points
+                    // m-1 is the coordinate of the first point to take for the coarse vector
 
-    //printf("This is i_hole = %d\n", i_hole);
-    //printf("This is m = %d\n", m);
-    //printf("This is q = %d\n", q);
-    //printf("This is n = %d\n", *n);
     //fill restricted residue vector
     for (int i = 0; i < *n; i++) {
         (*r_restr)[i] = (*r)[2*i + jump];
-        printf("This is r[%d] = %f\n", 2*i+jump, (*r)[2*i+jump]);
-        //printf("This is 2*i + jump = %d\n", 2*i+jump);
-        if (((2*i+jump) % (m-2) == 0) && (i != 0) && ((2*i+jump) <= i_hole)) { // if we are in the bigger rectangle of the room
-            jump += m-3; // m-2 - 1 because start of row is at index +1 of end of row and not +2
-        }
-        else if (((2*i+jump-i_hole) % (3*q-1) == 0) && ((2*i+jump-i_hole) != 0) && ((2*i+jump) > i_hole)){
-            jump += 3*q-2; // -2 because dirichlet condition and -1 because start of row is at index +1 of end of row and not +2
+        printf("This is r[%d] = %f\n", 2*i+jump, (*r)[2*i+jump]); // debug
+        if (((2*i+jump+2) % (m_fine-2) == 0) && (i != 0) && ((2*i+jump) <= i_hole)) { // if we are in the bigger rectangle of the room
+            jump += m_fine-1; // m because m-2 points per row, plus the last of the previous coarse line and the first of the next coarse line
+        } 
+        else if (((2*i+jump-i_hole+2) % (3*q_fine-1) == 0) && ((2*i+jump-i_hole) != 0) && ((2*i+jump) > i_hole)){
+            jump += 3*q_fine; // 3*q-1 per row in the small rectangle, plus the last of the previous coarse line and the first of the next coarse line
         }
     }
-
 }
 
 void prolongation(int m_coarse, int q, int *n_coarse, double **r_coarse, double **r_prol) {
