@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     // déclarer les variables 
 
     double (*rho_ptr)(double, double, double) = &rho;
-    int m = 1101;
+    int m = 23;
     int u = 0;
     int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int two_grid_iter = 17;
