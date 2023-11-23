@@ -1,0 +1,1 @@
+double two_grid_method(int n, int m, int L, int *ia, int *ja, double *a, double *b, double *x, double *gs_x, double *rho_ptr, double source_value);

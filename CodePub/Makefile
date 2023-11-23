@@ -35,7 +35,7 @@ clean:
 	rm *.o 
 	rm main
 
-main: main.c prob.o time.o  umfpack.o residual.o rho.o heatflux.o gs.o projections.o #petsc.o
+main: main.c prob.o time.o  umfpack.o residual.o rho.o heatflux.o gs.o projections.o two_grid.o #petsc.o
 	cc -g $(COPT) $^ -o $@ $(LIB1) $(LIB2)
 
 umfpack.o: umfpack.c

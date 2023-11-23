@@ -9,6 +9,7 @@
 #include "heatflux.h"
 #include "gs.h"
 #include "projections.h"
+#include "two_grid.h"
 
 // Fonction main
 
@@ -18,9 +19,10 @@ int main(int argc, char *argv[])
     // déclarer les variables 
 
     double (*rho_ptr)(double, double, double) = &rho;
-    int m = 23;
+    int m = 1101;
     int u = 0;
     int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
+    int two_grid_iter = 17;
     int q = (m-1) / 11;
     int use_petsc = 0; // activer ou déactiver l'utilisation de PETSc
     double source_value = 500.0 ; // permet d'itérer sur les différentes valeurs de rho pour 
@@ -32,7 +34,7 @@ int main(int argc, char *argv[])
     double L = 5.5;
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
-    double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6; // mis à jour le 13/10/22 
+    double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
     //double *vec_dev = malloc(1000 * sizeof(double)); // sauvegarder les 1000 résultats obtenus
 
     // itérer et trouver la meilleure valeur de rho pour résoudre le problème
@@ -197,7 +199,7 @@ int main(int argc, char *argv[])
     printf("\nTemps de solution, UMFPACK (CPU): %5.1f sec",tc2-tc1); // mis à jour le 13/10/22 
     printf("\nTemps de solution, UMFPACK (horloge): %5.1f sec \n",tw2-tw1); // mis à jour le 13/10/22 
 
-    //tc3 = mytimer_cpu(); tw3 = mytimer_wall();
+/*    //tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
@@ -210,7 +212,7 @@ int main(int argc, char *argv[])
     printf("Pre-smoothing residual is %.10e\n", res_gs);
     int w = 0;
 
-    tc4 = mytimer_cpu(); tw4 = mytimer_wall();
+    //tc4 = mytimer_cpu(); tw4 = mytimer_wall();
 
     //printf("\nTemps de solution, Gauss-Seidel (CPU): %5.1f sec",tc4-tc3);
     //printf("\nTemps de solution, Gauss-Seidel (horloge): %5.1f sec \n",tw4-tw3);
@@ -283,12 +285,37 @@ int main(int argc, char *argv[])
 
     printf("Post-prolongation residual is %.10e\n", res_prolongation);
 
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
+    //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
 
     double two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r); 
 
-    printf("Two-grid residual: %.10e\n", two_grid_residual); 
+    printf("Two-grid residual: %.10e\n", two_grid_residual);
+
+*/
+
+    double two_grid_residual = 1.0;
+
+    tc5 = mytimer_cpu(); tw5 = mytimer_wall();
+    while (two_grid_residual > 8e-15) {
+        two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, x, gs_x, rho_ptr, source_value);
+    }
+    tc6 = mytimer_cpu(); tw6 = mytimer_wall();
+    printf("\nSolution time, two-grid method (CPU): %5.1f sec",tc6-tc5);
+    printf("\nSolution time, two-grid method (clock): %5.1f sec \n",tw6-tw5);
+
+    //for (int i = 0; i < n; i++) {
+    //    gs_x[i] = 0.0; // reset the solution to compare the 2 methods
+    //}
+    //double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+
+    //tc7 = mytimer_cpu(); tw7 = mytimer_wall();
+    //while (residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r) > 5e-15) {
+    //    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    //}
+    //tc8 = mytimer_cpu(); tw8 = mytimer_wall();
+    //printf("\nSolution time, pure Gauss-Seidel (CPU): %5.1f sec",tc8-tc7);
+    //printf("\nSolution time, pure Gauss-Seidel (clock): %5.1f sec \n",tw8-tw7);
 
     // créer le fichier de sortie pour gnuplot 
 
@@ -309,8 +336,7 @@ int main(int argc, char *argv[])
     fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
     //sleep(1); // permet à gnuplot de lire le fichier avant de le supprimer
 
-    free(ia); free(ja); free(a); free(b); free(x); free(r); free(gs_r); free(gs_x); free(restr_r); 
-    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); //free(r_coarse);
+    free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
     system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     system("gnuplot -persist \"heatmap_two_grid.gnu\"");
     
