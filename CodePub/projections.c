@@ -4,7 +4,7 @@ void restriction(int m, int q, int *n, int **ia, int **ja, double **a, double **
     // get the new amount of points, variables and so forth
     int m_fine = (m-1)*2 + 1; // number of points in a row of the fine grid
     int q_fine = (m_fine-1)/11; // number of points in a row of the fine grid in the small rectangle
-    int i_hole = (m_fine-2)*(q_fine*5+1); // index of start of the row "of the hole" in the big rectangle
+    int i_hole = (m_fine-2)*(q_fine*6-1); // index of start of the row "of the hole" in the big rectangle
     //printf("This is i_hole = %d\n", i_hole); // debug
 
     //restriction of the residue to the coarse grid
@@ -28,8 +28,8 @@ void restriction(int m, int q, int *n, int **ia, int **ja, double **a, double **
 void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, double **r_prol) {
     // interpolates the coarse grid residue to the fine grid
 
-    int i_hole = (m_coarse-2)*(q_coarse*5+1); // index of start of the row "of the hole" in the big rectangle
-    int row_jump = 0; // when a row is jumped (wall hit), we need to keep track of it + also keep track of the consecutive points in front of a wall
+    int i_hole = (m_coarse-2)*(q_coarse*6-1); // index of start of the row "of the hole" in the big rectangle
+    int row_jump = 1; // when a row is jumped (wall hit), we need to keep track of it + also keep track of the consecutive points in front of a wall
                       // starts at 1 because the first row is a fine row with no coarse points
     int jump = 0; // when a fine row is done, we need to keep track of it so that we know how many fine points have been dealt with already in the fine vector
 
@@ -52,19 +52,37 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                     (*r_prol)[2*i+jump+1] = (*r_coarse)[i];
                 }
             } else { // if we are on a fine row with no coarse points
-                for (int j = 0; j < (m_coarse-2); j++) {
-                    if (j % (m_coarse-2) == 0) { // next to the first wall
-                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
-                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
-                    } else if (j % (m_coarse-2) == m_coarse-3) { // next to the second wall
-                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
-                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3]);
-                        (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3]);
-                        row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
-                        jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
-                    } else {
-                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
-                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3]);
+                if (i == 0) { // first fine row, less terms in the sums -> special case
+                    for (int j = 0; j < (m_coarse-2); j++) {
+                        if (j % (m_coarse-2) == 0) { // next to the first wall
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1]);
+                        } else if (j % (m_coarse-2) == m_coarse-3) { // next to the second wall
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1]);
+                            (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1]);
+                            row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
+                            jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
+                        } else {
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1]);
+                        }
+                    } 
+                } else { 
+                    for (int j = 0; j < (m_coarse-2); j++) {
+                        if (j % (m_coarse-2) == 0) { // next to the first wall
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
+                        } else if (j % (m_coarse-2) == m_coarse-3) { // next to the second wall
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3]);
+                            (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3]);
+                            row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
+                            jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
+                        } else {
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3]);
+                        }
                     }
                 }
             }
