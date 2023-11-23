@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 
-int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*source_func)(double, double, double),
-         double source_value, int write) // on rajoute la fonction source en argument
+int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) // on rajoute la fonction source en argument
 /*
    But
    ===

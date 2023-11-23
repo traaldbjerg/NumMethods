@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     // déclarer les variables 
 
     double (*rho_ptr)(double, double, double) = &rho;
-    int m = 23;
+    int m = 1101;
     int u = 0;
     int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int two_grid_iter = 17;
@@ -35,114 +35,8 @@ int main(int argc, char *argv[])
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
-    //double *vec_dev = malloc(1000 * sizeof(double)); // sauvegarder les 1000 résultats obtenus
 
-    // itérer et trouver la meilleure valeur de rho pour résoudre le problème
-
-    /*for (u=0; u < iter_max; u++) {
-
-        // générer le problème
-
-        if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr, source_value, 0)) // source_value permet de lancer des simus de problèmes différents
-            return 1;
-
-        if (u == 0) { // pour ne pas imprimer le nombre d'inconnues 1000 fois
-            printf("\nPROBLEM: ");
-            printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
-        }
-
-        // allouer la mémoire pour le vecteur de solution 
-
-        x = malloc(n * sizeof(double));
-        if ( x == NULL ) {
-        free(ia); free(ja); free(a); free(b); free(x); // empêche leak de mémoire en cas d'erreur
-        printf("\n ERREUR : pas de mémoire pour vecteur des solutions\n\n");
-            return 1;
-        }
-
-        // résoudre et mesurer le temps de solution 
-
-        if ( solve_umfpack(n, ia, ja, a, b, x) ) {
-            free(ia); free(ja); free(a); free(b); free(x); // empêche leak de mémoire en cas d'erreur
-            return 1;
-        }
-        
-        // construire la moyenne
-
-        int i = 0;
-        avrg = 0.0; // construit pour donner la moyenne
-        dim = 0; // taille de l'échantillon
-
-        for (int iy = 0; iy < m; iy++) { // vertical
-            for (int ix = 0; ix < m; ix++) { // horizontal
-                if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
-                    avrg += (x)[i];
-                    i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
-                } else if ((iy == 0 && (q * 3 <= ix) && (ix <= q * 8))) { // il faut aussi représenter la fenêtre, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                    //avrg += 0.0; // perte de temps de calcul
-                    dim += 1;
-                } else if (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)) { // il faut aussi représenter la porte, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                    avrg += 20.0;
-                    dim += 1;
-                }
-            }
-        }
-
-        dim += i;
-        avrg /= (double) dim; // on obtient la moyenne en la divisant par la taille de l'échantillon
-
-        // calcul de l'écart type de l'échantillon
-
-        std_dev = 0.0;
-
-        i = 0;
-
-        for (int iy = 0; iy < m; iy++) { // vertical
-            for (int ix = 0; ix < m; ix++) { // horizontal
-                if ((iy <= 6 * q || ix <= 3 * q) && !((iy == 0 && (q * 3 <= ix) && (ix <= q * 8)) || (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)))) { // si on n'est pas dans le rectangle supérieur droit ou sur une porte / fenetre
-                    std_dev += pow((x)[i], 2.0);
-                    i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
-                } else if ((iy == 0 && (q * 3 <= ix) && (ix <= q * 8))) { // il faut aussi représenter la fenêtre, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                    //std_dev += 0.0; // inutile
-                } else if (ix == 0 && (q * 6 <= iy) && (iy <= q * 8)) { // il faut aussi représenter la porte, or celle-ci ne fait pas partie des n inconnues -> rajouter à part
-                    std_dev += 400.0; //20^2, on écrit directement 400 pour épargner un calcul supplémentaire au processeur
-                }
-            }
-        }
-        
-        std_dev /= (double) dim;
-        std_dev -= pow(avrg, 2.0);
-        std_dev = sqrt(std_dev); // l'écart-type est finalisé
-        std_dev /= avrg; // on divise par la moyenne pour ne pas trop pénaliser les hautes températures de radiateur
-
-        //vec_dev[u] = std_dev; // utile pour affichage de la courbe des écarts-types
-
-        printf("\n%f    %f\n", source_value, std_dev);
-
-        if (u == 0) { // première fois
-            source_save = source_value;
-            save_dev = std_dev;
-        } else if (std_dev < save_dev) { // si on a trouvé un nouveau minimum
-            source_save = source_value;
-            save_dev = std_dev;
-        }
-
-        source_value += 1.0;
-
-        free(ia); free(ja); free(a); free(b); free(x);
-
-    }
-
-    if (iter_max != 0) // si on a itéré
-        source_value = source_save; // on assigne source_value à la meilleure solution
-    // sinon on va résoudre avec source_value
-    */
-    //printf("Meilleure valeur de rho: %f [K/m2]   Meilleur écart-type/moyenne: %f [-]\n", source_save, save_dev);
-
-    // on a trouvé la meilleure temp du radiateur, on la re-résout pour pouvoir l'afficher ensuite (plus économe que de faire plein de fois de l'écriture de fichier)
-    // alternativement, on aurait pu créer un array save_x dont on remplace les valeurs à chaque fois que l'écart-type/moyenne associé à x est meilleur
-
-    if (prob(m, &n, &ia, &ja, &a, &b, rho_ptr, source_value, 1)) // source_value permet de lancer des simus de problèmes différents
+    if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
         return 1;
     printf("\nPROBLEM: ");
     printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n]);
@@ -167,12 +61,6 @@ int main(int argc, char *argv[])
 
 
     // calculer flux par la fenêtre, la porte et la puissance du radiateur
-
-    //compute_heat_flux(m, q, &x, source_save, &flux_x, &flux_y, &rad_flux, rho_ptr); // void qui modifie directement les variables de flux
-
-    //printf("\nValeur des 2 flux: (%f, %f) [W]\n", flux_x, flux_y);
-    //printf("Puissance du radiateur et flux entrant/sortant: %f, %f\n", rad_flux, fabs(flux_x + flux_y));
-    //printf("Proportion puissance/flux: %f\n", rad_flux/fabs(flux_x + flux_y));
 
     // sauvegarder le vecteur solution pour faciliter la comparaison, principalement pour debug
 
@@ -296,13 +184,17 @@ int main(int argc, char *argv[])
 
     double two_grid_residual = 1.0;
 
+    int counter = 0;
     tc5 = mytimer_cpu(); tw5 = mytimer_wall();
     while (two_grid_residual > 8e-15) {
-        two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, x, gs_x, rho_ptr, source_value);
+        two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, x, gs_x);
+        counter++;
     }
+
     tc6 = mytimer_cpu(); tw6 = mytimer_wall();
     printf("\nSolution time, two-grid method (CPU): %5.1f sec",tc6-tc5);
     printf("\nSolution time, two-grid method (clock): %5.1f sec \n",tw6-tw5);
+    printf("Number of iterations : %d\n", counter);
 
     //for (int i = 0; i < n; i++) {
     //    gs_x[i] = 0.0; // reset the solution to compare the 2 methods
