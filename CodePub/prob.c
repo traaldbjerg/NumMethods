@@ -167,7 +167,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, double (*sou
     }
     
 
-    printf("%d\n", nnz);
+    //printf("%d\n", nnz);
 
     /* dernier élément du tableau 'ia' */
     (*ia)[ind] = nnz;

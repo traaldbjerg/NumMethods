@@ -4,7 +4,7 @@
 #include "prob.h"
 #include "umfpk.h"
 #include "time.h"
-#include "residue.h"
+#include "residual.h"
 #include "rho.h"
 #include "heatflux.h"
 #include "gs.h"
@@ -201,21 +201,21 @@ int main(int argc, char *argv[])
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    //double res_umfpack = residue(&n, &ia, &ja, &a, &b, &x, &r);
-    double res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    printf("Initial residue is %.10e\n", res_gs);
+    //double res_umfpack = residual(&n, &ia, &ja, &a, &b, &x, &r);
+    double res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    printf("Initial residual is %.10e\n", res_gs);
     sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
     sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    res_gs = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    printf("Pre-smoothing residue is %.10e\n", res_gs);
+    res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    printf("Pre-smoothing residual is %.10e\n", res_gs);
     int w = 0;
 
     tc4 = mytimer_cpu(); tw4 = mytimer_wall();
 
-    printf("\nTemps de solution, Gauss-Seidel (CPU): %5.1f sec",tc4-tc3);
-    printf("\nTemps de solution, Gauss-Seidel (horloge): %5.1f sec \n",tw4-tw3);
+    //printf("\nTemps de solution, Gauss-Seidel (CPU): %5.1f sec",tc4-tc3);
+    //printf("\nTemps de solution, Gauss-Seidel (horloge): %5.1f sec \n",tw4-tw3);
 
-    //printf("Initial residue\n\n\n");
+    //printf("Initial residual\n\n\n");
     //for (int i = 0; i < n; i++) {
     //    printf("%f\n", gs_r[i]);
     //}
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
     //printf("n_coarse: %d\n", n_coarse);
     double *restr_r = malloc(n_coarse * sizeof(double));
     restriction(m_coarse, q_coarse, &n_coarse, &ia, &ja, &a, &b, &gs_x, &gs_r, &restr_r);
-    //printf("Restricted residue\n\n\n");
+    //printf("Restricted residual\n\n\n");
     //for (int i = 0; i < n_coarse; i++) {
     //    printf("%f\n", restr_r[i]);
     //}
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 
     prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
 
-    //construct the x vector from this improvement to the residue
+    //construct the x vector from this improvement to the residual
 
     for (int i = 0; i < n; i++) {
         //printf("gs_x[%d]: %f\n", i, gs_x[i]); // debug
@@ -270,17 +270,16 @@ int main(int argc, char *argv[])
         gs_x[i] += r_prol[i];
     }
 
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
+    //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
 
-    double two_grid_residue = residue(&n, &ia, &ja, &a, &b, &gs_x, &gs_r); 
+    double two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r); 
 
-    printf("Two-grid residue: %f\n", two_grid_residue); 
+    printf("Two-grid residual: %f\n", two_grid_residual); 
 
     // créer le fichier de sortie pour gnuplot 
 
     FILE *f_out_two = fopen("mat/out_two_grid.dat", "w");
-
 
     i = 0;
 

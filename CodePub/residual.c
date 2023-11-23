@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 
-double residue(int *n, int **ia, int **ja, double **a, double **b, double **x, double **r) {
+double residual(int *n, int **ia, int **ja, double **a, double **b, double **x, double **r) {
     
     double res = 0;
     double norm_b = 0;
