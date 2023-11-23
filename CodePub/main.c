@@ -265,9 +265,9 @@ int main(int argc, char *argv[])
 
     double *r_prol = malloc(n * sizeof(double));
 
-    for (int i = 0; i < n_coarse; i++) { // debug
-        r_coarse[i] = 1.0; // test vector for debugging
-    }
+    //for (int i = 0; i < n_coarse; i++) { // debug
+    //    r_coarse[i] = 1.0; // test vector for debugging
+    //}
 
     prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
 
@@ -276,15 +276,19 @@ int main(int argc, char *argv[])
     for (int i = 0; i < n; i++) {
         //printf("gs_x[%d]: %f\n", i, gs_x[i]); // debug
         //printf("r_prol[%d]: %f\n", i, r_prol[i]); // debug
-        gs_x[i] = r_prol[i];
+        gs_x[i] += r_prol[i];
     }
 
-    //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
+    double res_prolongation = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+
+    printf("Post-prolongation residual is %.10e\n", res_prolongation);
+
+    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
 
     double two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r); 
 
-    printf("Two-grid residual: %f\n", two_grid_residual); 
+    printf("Two-grid residual: %.10e\n", two_grid_residual); 
 
     // créer le fichier de sortie pour gnuplot 
 
