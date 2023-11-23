@@ -32,12 +32,16 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
     int row_jump = 1; // when a row is jumped (wall hit), we need to keep track of it + also keep track of the consecutive points in front of a wall
                       // starts at 1 because the first row is a fine row with no coarse points
     int jump = 0; // when a fine row is done, we need to keep track of it so that we know how many fine points have been dealt with already in the fine vector
+                  // basically counts the total number of j increments
+    int swap = 1; // switches a condition off
+    printf("This is i_hole = %d\n", i_hole); // debug
 
     // fill the prolongation of the residue vector
     for (int i = 0; i < *n_coarse; i++) {
-        if (i < i_hole-1) {
+        if (i < i_hole) {
             if (row_jump % 2 == 0) {
                 if (i % (m_coarse-2) == 0) {
+                    printf("In prolongation : r_coarse[%d] = %f\n", i, (*r_coarse)[i]);
                     (*r_prol)[2*i+jump] = 0.5*(*r_coarse)[i]; // nothing more because the wall wich comes right before is dirichlet, coef 0
                     (*r_prol)[2*i+jump+1] = (*r_coarse)[i];
                 }
@@ -46,6 +50,7 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                     (*r_prol)[2*i+jump+1] = (*r_coarse)[i];
                     (*r_prol)[2*i+jump+2] = 0.5*((*r_coarse)[i]); // nothing more because the wall which comes right after is dirichlet, coef 0
                     row_jump++; // we have hit a wall, so we need to jump to the next row which has no coarse points at all
+                    jump += 1; // last point of the row
                 }
                 else {
                     (*r_prol)[2*i+jump] = 0.5*((*r_coarse)[i] + (*r_coarse)[i-1]);
@@ -63,6 +68,7 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                             (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1]);
                             row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
                             jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
+                            i--; // we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
                         } else {
                             (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j]);
                             (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1]);
@@ -74,11 +80,12 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                             (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
                             (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
                         } else if (j % (m_coarse-2) == m_coarse-3) { // next to the second wall
-                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
-                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3]);
-                            (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+m_coarse-3]);
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
+                            (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
                             row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
                             jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
+                            i--; // we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
                         } else {
                             (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
                             (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3]);
@@ -89,23 +96,45 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
         // still need to take care of the last fine row before the smaller rectangle
         // after the cutout, the points above are on the dirichlet wall -> residue = 0
         // less terms in the sum
-        } else if (i == i_hole-1) {
+        } else if (swap && (i == i_hole)) {
+            printf("Last fine row before the cutout\n");
+            printf("This is i = %d\n", i);
+            printf("This is i_hole = %d\n", i_hole);
+            printf("\n");
+            // PROBLEMS HERE APPARENTLY
             for (int j = 0; j < (m_coarse-2); j++) {
                 if (j % (m_coarse-2) == 0) { // next to the first wall
                     (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
                     (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-m_coarse+3]);
-                } else if (j > (3*q_coarse - 1)) { // next to the upper right wall
-                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-m_coarse+2] + (*r_coarse)[i+j-m_coarse+3]);
-                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-m_coarse+3]);                              
                 } else if (j % (m_coarse-2) == m_coarse-3) { // next to the second wall
-                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+m_coarse-3] + (*r_coarse)[i+j-m_coarse+2]);
-                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+m_coarse-3]);
-                    (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+m_coarse-3]);
+                    printf("In the second wall\n");
+                    printf("This is r_coarse[%d] = %f\n", i+j-m_coarse+2, (*r_coarse)[i+j-m_coarse+2]);
+                    printf("This is r_coarse[%d] = %f\n", i+j-m_coarse+3, (*r_coarse)[i+j-m_coarse+3]);
+                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-m_coarse+3] + (*r_coarse)[i+j-m_coarse+2]);
+                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-m_coarse+3]);
+                    (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j-m_coarse+3]);
+                    printf("This is r_prol[%d] = %f\n", 2*i+jump+2*j, (*r_prol)[2*i+jump+2*j]);
+                    printf("This is r_prol[%d] = %f\n", 2*i+jump+2*j+1, (*r_prol)[2*i+jump+2*j+1]);
+                    printf("This is r_prol[%d] = %f\n", 2*i+jump+2*j+2, (*r_prol)[2*i+jump+2*j+2]);
                     row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
-                }  else {
-                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
-                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3]);
-                    }
+                    jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
+                    i--;// we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
+                    swap = 0; // switch the condition off 
+                } else if (j == (3*q_coarse - 1)) { // next to the obtuse corner
+                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
+                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i-m_coarse+3]);
+                } else if (j > (3*q_coarse - 1)) { // next to the upper right wall
+                                                   // this condition was the source of many bugs because it needs to be after the end of row one
+                                                   // otherwise the end of wall condition is never reached
+                    printf("In the upper right corner\n");
+                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-m_coarse+2] + (*r_coarse)[i+j-m_coarse+3]);
+                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-m_coarse+3]);
+                    printf("This is r_prol[%d] = %f\n", 2*i+jump+2*j, (*r_prol)[2*i+jump+2*j]);
+                    printf("This is r_prol[%d] = %f\n", 2*i+jump+2*j+1, (*r_prol)[2*i+jump+2*j+1]);
+                } else {
+                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j] + (*r_coarse)[i+j-m_coarse+2]);
+                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-m_coarse+3]);
+                }
             }
         // fill the vector with the second rectangle
         } else { // if we are in the upper small rectangle
@@ -113,26 +142,30 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                 if ((i-i_hole) % (3*q_coarse-1) == 0) {
                     (*r_prol)[2*i+jump] = 0.5*(*r_coarse)[i]; // nothing more because the wall wich comes right before is dirichlet, coef 0
                     (*r_prol)[2*i+jump+1] = (*r_coarse)[i];
+                    printf("Hey this works\n");
+                    printf("This is r_prol[%d] = %f\n", 2*i+jump, (*r_prol)[2*i+jump]);
+                    printf("This is jump = %d\n", jump);
                 }
                 else if ((i-i_hole) % (3*q_coarse-1) == 3*q_coarse-2) {
                     (*r_prol)[2*i+jump] = 0.5*((*r_coarse)[i] + (*r_coarse)[i-1]);
                     (*r_prol)[2*i+jump+1] = (*r_coarse)[i];
                     (*r_prol)[2*i+jump+2] = 0.5*((*r_coarse)[i]); // nothing more because the wall which comes right after is dirichlet, coef 0
                     row_jump++; // we have hit a wall, so we need to jump to the next row which has no coarse points at all
-                }
-                else {
+                    jump += 1; // last point of the row
+                } else {
                     (*r_prol)[2*i+jump] = 0.5*((*r_coarse)[i] + (*r_coarse)[i-1]);
                     (*r_prol)[2*i+jump+1] = (*r_coarse)[i];
                 }
             } else { // if we are on a fine row with no coarse points
+                // need to take care of the last row of the small rectangle, special case with less terms in the sums
                 for (int j = 0; j < 3*q_coarse-1; j++) {
                     if (j % (3*q_coarse-1) == 0) { // next to the first wall
                         (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-3*q_coarse+2]);
                         (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-3*q_coarse+2]);
                     } else if (j % (3*q_coarse-1) == 3*q_coarse-2) { // next to the second wall
-                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+3*q_coarse-2] + (*r_coarse)[i+j] + (*r_coarse)[i+j-3*q_coarse+1]);
-                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+3*q_coarse-2]);
-                        (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j+3*q_coarse-2]);
+                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-3*q_coarse+2] + (*r_coarse)[i+j] + (*r_coarse)[i+j-3*q_coarse+1]);
+                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-3*q_coarse+2]);
+                        (*r_prol)[2*i+jump+2*j+2] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i+j-3*q_coarse+2]);
                         row_jump++; // we have hit a wall, so we need to jump to the next row which has coarse points this time
                         if ((i == *n_coarse-1) && (j == 3*q_coarse-2)) {
                             for (int k = 0; k < 2 * i + jump + 2 * j + 3; k++) {
@@ -140,6 +173,7 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                             }
                         }
                         jump += 2 * (3*q_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
+                        i--; // we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
                     } else {
                         (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-3*q_coarse+2] + (*r_coarse)[i+j] + (*r_coarse)[i+j-3*q_coarse+1]);
                         (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j+1] + (*r_coarse)[i-3*q_coarse+2]);

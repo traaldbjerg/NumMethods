@@ -234,10 +234,15 @@ int main(int argc, char *argv[])
             - p_coarse; // number of points on the walls 
     //printf("n_coarse: %d\n", n_coarse);
     double *restr_r = malloc(n_coarse * sizeof(double));
+
+    //for (int i = 0; i < n; i++) {
+    //    gs_r[i] = 1.0; // test vector for debugging
+    //}
+
     restriction(m_coarse, q_coarse, &n_coarse, &ia, &ja, &a, &b, &gs_x, &gs_r, &restr_r);
-    //printf("Restricted residual\n\n\n");
-    //for (int i = 0; i < n_coarse; i++) {
-    //    printf("%f\n", restr_r[i]);
+    
+    //for (int i = 0; i < n_coarse; i++) { // debug
+    //    printf("restr_r[%d] = %f\n", i, restr_r[i]);
     //}
 
     // solve the coarse problem
@@ -260,6 +265,10 @@ int main(int argc, char *argv[])
 
     double *r_prol = malloc(n * sizeof(double));
 
+    for (int i = 0; i < n_coarse; i++) { // debug
+        r_coarse[i] = 1.0; // test vector for debugging
+    }
+
     prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
 
     //construct the x vector from this improvement to the residual
@@ -267,7 +276,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < n; i++) {
         //printf("gs_x[%d]: %f\n", i, gs_x[i]); // debug
         //printf("r_prol[%d]: %f\n", i, r_prol[i]); // debug
-        gs_x[i] += r_prol[i];
+        gs_x[i] = r_prol[i];
     }
 
     //sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
