@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
     void *Numeric;
 
-    if (prob(m, &n, &ia, &ja, &a, &b, 1)) // source_value permet de lancer des simus de problèmes différents
+    if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
         return 1;
     printf("\nPROBLEM: ");
     printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n]);
@@ -55,12 +55,12 @@ int main(int argc, char *argv[])
 
     // résoudre et mesurer le temps de solution 
 
-    tc1 = mytimer_cpu(); tw1 = mytimer_wall(); // mis à jour le 13/10/22
-    if ( solve_umfpack(n, ia, ja, a, b, x) ) {
-        free(ia); free(ja); free(a); free(b); free(x); // empêche leak de mémoire en cas d'erreur
-        return 1;
-    }
-    tc2 = mytimer_cpu(); tw2 = mytimer_wall(); // mis à jour le 13/10/22
+    //tc2 = mytimer_cpu(); tw1 = mytimer_wall(); // mis à jour le 13/10/22
+    //if ( solve_umfpack(n, ia, ja, a, b, x) ) {
+    //    free(ia); free(ja); free(a); free(b); free(x); // empêche leak de mémoire en cas d'erreur
+    //    return 1;
+    //}
+    //tc2 = mytimer_cpu(); tw2 = mytimer_wall(); // mis à jour le 13/10/22
 
 
     // calculer flux par la fenêtre, la porte et la puissance du radiateur
@@ -87,8 +87,8 @@ int main(int argc, char *argv[])
 
     //fclose(f_out); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
 
-    printf("\nTemps de solution, UMFPACK (CPU): %5.1f sec",tc2-tc1); // mis à jour le 13/10/22 
-    printf("\nTemps de solution, UMFPACK (horloge): %5.1f sec \n",tw2-tw1); // mis à jour le 13/10/22 
+    //printf("\nTemps de solution, UMFPACK (CPU): %5.1f sec",tc2-tc1); // mis à jour le 13/10/22 
+    //printf("\nTemps de solution, UMFPACK (horloge): %5.1f sec \n",tw2-tw1); // mis à jour le 13/10/22 
 
 /*    //tc3 = mytimer_cpu(); tw3 = mytimer_wall();
 
@@ -198,6 +198,8 @@ int main(int argc, char *argv[])
             - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
             - p_coarse; // number of points on the walls
     double *x_coarse = malloc(n_coarse * sizeof(double));
+
+    tc4 = mytimer_cpu(); tw4 = mytimer_wall();
     
     prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0);
     
@@ -225,8 +227,10 @@ int main(int argc, char *argv[])
     }
 
     tc6 = mytimer_cpu(); tw6 = mytimer_wall();
-    printf("\nSolution time, two-grid method (CPU): %5.1f sec",tc6-tc5);
-    printf("\nSolution time, two-grid method (clock): %5.1f sec \n",tw6-tw5);
+    printf("\nSolution time, two-grid method (CPU): %5.2f sec",tc6-tc5);
+    printf("\nSolution time, two-grid method (clock): %5.2f sec \n",tw6-tw5);
+    printf("\nSolution time, two-grid method + factorization (CPU): %5.2f sec",tc6-tc4);
+    printf("\nSolution time, two-grid method + factorization (clock): %5.2f sec \n",tw6-tw4);
     printf("Number of iterations : %d\n", counter);
 
     //for (int i = 0; i < n; i++) {
