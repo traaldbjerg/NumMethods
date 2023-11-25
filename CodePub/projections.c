@@ -15,6 +15,7 @@ void restriction(int m, int q, int *n, double **r, double **r_restr) {
     //fill restricted residue vector
     for (int i = 0; i < *n; i++) {
         (*r_restr)[i] = (*r)[2*i + jump];
+        //printf("This is i = %d\n", i); // debug
         //printf("This is r[%d] = %f\n", 2*i+jump, (*r)[2*i+jump]); // debug
         if (((2*i+jump+2) % (m_fine-2) == 0) && (i != 0) && ((2*i+jump) <= i_hole)) { // if we are in the bigger rectangle of the room
             jump += m_fine-1; // m because m-2 points per row, plus the last of the previous coarse line and the first of the next coarse line

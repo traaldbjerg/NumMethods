@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     // déclarer les variables 
 
     //double (*rho_ptr)(double, double, double) = &rho;
-    int m = 155;
+    int m = 1101;
     //int u = 0;
     //int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int two_grid_iter = 17;
@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
+    void *Numeric;
 
     if (prob(m, &n, &ia, &ja, &a, &b, 1)) // source_value permet de lancer des simus de problèmes différents
         return 1;
@@ -188,8 +189,20 @@ int main(int argc, char *argv[])
     /* initialisation des paramètres par défaut */
     //double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
     //void *Symbolic, *Numeric ;
-    //double *ia_coarse, *ja_coarse, *a_coarse, *b_coarse;
+    double *ia_coarse, *ja_coarse, *a_coarse, *b_coarse;
     //generate_coarse_problem(m, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, Symbolic, Numeric, Info, Control);
+    int m_coarse = (m-1)/2 + 1;
+    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+            - p_coarse; // number of points on the walls
+    double *x_coarse = malloc(n_coarse * sizeof(double));
+    
+    prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0);
+    
+    Numeric = factorize_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse);
+    //generate_coarse_problem(m, ia_coarse, ja_coarse, a_coarse, b_coarse, Numeric);
 
     double two_grid_residual = 1.0;
 
@@ -197,12 +210,14 @@ int main(int argc, char *argv[])
 
     int counter = 0;
     tc5 = mytimer_cpu(); tw5 = mytimer_wall();
-    while (two_grid_residual > 2.5e-15) {
+    while (two_grid_residual > 6.5e-15) {
         //fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
         //two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-        two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
+        //two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
         //two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, &ia_coarse, &ja_coarse, &a_coarse,
         //                                                    &b_coarse, Symbolic, Numeric, Info, Control);
+        two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, ia_coarse, ja_coarse, a_coarse,
+                                                            b_coarse, Numeric);
         counter++;
         //if (counter == 3)
         //    sleep(50);
@@ -246,12 +261,12 @@ int main(int argc, char *argv[])
     fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
     //sleep(1); // permet à gnuplot de lire le fichier avant de le supprimer
 
-    int m_coarse = (m-1)/2 + 1;
-    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
-    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
-    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
-            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
-            - p_coarse; // number of points on the walls
+    //int m_coarse = (m-1)/2 + 1;
+    //int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    //int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    //int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+    //        - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+    //        - p_coarse; // number of points on the walls
 
 
     // RECONSTRUCT PROLONGATION AND RESTRICTION MATRICES IN MATLAB
@@ -301,6 +316,7 @@ int main(int argc, char *argv[])
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
+    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
     //system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"heatmap_two_grid.gnu\"");
     //system("gnuplot -persist \"heatmap_initial_residual.gnu\"");

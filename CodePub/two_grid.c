@@ -177,18 +177,18 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
 
     printf("Two-grid residual: %.10e\n", two_grid_residual);
 
-    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r); free(gs_r); free(restr_r); free(r_prol); free(r_prol_no_solve);
+    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r); free(gs_r); free(restr_r); free(r_prol); free(r_prol_no_solve); free(r_coarse);
 
     return two_grid_residual; // success
 }
 
-int generate_coarse_problem(int m, int *ia_coarse_ptr, int *ja_coarse_ptr, double *a_coarse_ptr, 
-                    double *b_coarse_ptr, void *Symbolic, void *Numeric, double *Info, double *Control) 
+int generate_coarse_problem(int m_fine, int *ia_coarse_ptr, int *ja_coarse_ptr, double *a_coarse_ptr, 
+                    double *b_coarse_ptr, void *Numeric) 
 {
     // generates the coarse matrices separately from the two-grid method
     // uses factorize umfpack to store the LU factorization of the coarse matrix in the corresponding pointers in this function's arguments
     // this way umfpack doesn't have to do as much heavy lifting for no purpose
-    int m_coarse = (m-1)/2 + 1;
+    int m_coarse = (m_fine-1)/2 + 1;
     int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
     int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
     int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
@@ -205,18 +205,17 @@ int generate_coarse_problem(int m, int *ia_coarse_ptr, int *ja_coarse_ptr, doubl
 }
 
 double factorized_two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, double *b, double *gs_x, int *ia_coarse, int *ja_coarse, double *a_coarse, 
-                    double *b_coarse, void *Symbolic, void *Numeric, double *Info, double *Control) {
+                    double *b_coarse, void *Numeric) {
     // uses the factorized coarse matrix to solve the coarse problem
     // then uses the solution to the coarse problem to improve the solution to the fine problem
     // this is the two-grid method with factorized coarse matrix
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double res_gs; //= residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    printf("Initial residual is %.10e\n", res_gs);
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    //printf("Initial residual is %.10e\n", res_gs);
+    fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x); 
     res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    printf("Pre-smoothing residual is %.10e\n", res_gs);
+    //printf("Pre-smoothing residual is %.10e\n", res_gs);
 
     if ((m - 1) % 2 != 0) {
         printf("old_m: %d\n", m);
@@ -230,39 +229,30 @@ double factorized_two_grid_method(int n, int m, double L, int *ia, int *ja, doub
     int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
     int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
             - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
-            - p_coarse; // number of points on the walls 
-    //printf("n_coarse: %d\n", n_coarse);
-    double *restr_r;
-
+            - p_coarse; // number of points on the walls
+            
+    double *restr_r = malloc(n_coarse * sizeof(double));
     restriction(m_coarse, q_coarse, &n_coarse, &gs_r, &restr_r);
 
     double *r_coarse = malloc(n_coarse * sizeof(double));
 
-    //if (solve_umfpack_factorized(n_coarse, ia_coarse, ja_coarse, a_coarse, restr_r, r_coarse, Symbolic, Numeric, Info, Control)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
-                                                                                      // which we will use to compute the prolongation and go back to the fine grid
-        //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); 
+    if (solve_umfpack_factorized(n_coarse, ia_coarse, ja_coarse, a_coarse, restr_r, r_coarse, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
+                                                                                      // which we will use to compute the prolongation and go back to the fine grid  
         free(r_coarse); // prevents memory leak
+        sleep(1); // debug
         return 1;
-    //}
+    }
 
     double *r_prol = malloc(n * sizeof(double));
-
     prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
 
     //construct the x vector from this improvement to the residual
 
     for (int i = 0; i < n; i++) {
-        //printf("gs_x[%d]: %f\n", i, gs_x[i]); // debug
-        //printf("r_prol[%d]: %f\n", i, r_prol[i]); // debug
         gs_x[i] += r_prol[i];
     }
 
-    double res_prolongation = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-
-    //printf("Post-prolongation residual is %.10e\n", res_prolongation);
-
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    sym_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    bwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
 
     double two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
 
