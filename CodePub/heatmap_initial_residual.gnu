@@ -1,11 +1,11 @@
 reset
 
-stats 'mat/out_prolongation.dat' using 3 nooutput
+stats 'mat/out_initial_residual.dat' using 3 nooutput
 z_min = STATS_min
 z_max = STATS_max
 
 set pm3d
-set title "Prolongation (°C)"
+set title "Initial Residual(°C)"
 set xlabel "x (m)"
 set ylabel "y (m)"
 set zlabel "T (°C)"
@@ -16,5 +16,5 @@ set zrange [z_min:z_max]
 #do for [mode in "min"] { # pour des petits pas de discrétisation, permet que la fenêtre soit à la bonne couleur
                          # mais alors porte pas à la bonne couleur :(
 #    eval "set pm3d corners2color ".mode
-    splot "mat/out_prolongation.dat" using 2:1:3 with pm3d
+    splot "mat/out_initial_residual.dat" using 2:1:3 with pm3d
 #}

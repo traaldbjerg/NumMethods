@@ -111,6 +111,10 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
                         (*b)[ind] += sin(sqrt(((ix * ix + (iy-1) * (iy-1))/invh2)))*invh2; // -1 because it is the coordinates of the wall point
                                                                                            // and not of our room point we need
                             // no need for a ja modification because this directly goes into the b vector, not the matrix
+                            if (write) {
+                                //printf("Value of ix * ix + (iy-1) * (iy-1)/invh2: %f\n", (ix * ix + (iy-1) * (iy-1))/invh2);
+                                //printf("Value of sin(sqrt(((ix * ix + (iy-1) * (iy-1))/invh2)))*invh2: %f\n", sin(sqrt(((ix * ix + (iy-1) * (iy-1))/invh2)))*invh2);
+                            }
                     } else {
                         (*a)[nnz] = -invh2;
                         if ((q * 6 < iy)) { // en face de la porte

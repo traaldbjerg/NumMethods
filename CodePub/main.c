@@ -193,13 +193,20 @@ int main(int argc, char *argv[])
 
     double two_grid_residual = 1.0;
 
+    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+
     int counter = 0;
     tc5 = mytimer_cpu(); tw5 = mytimer_wall();
-    while (two_grid_residual > 8e-15) {
+    while (two_grid_residual > 2.5e-15) {
+        //fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+        //two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
         two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
         //two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, &ia_coarse, &ja_coarse, &a_coarse,
         //                                                    &b_coarse, Symbolic, Numeric, Info, Control);
         counter++;
+        //if (counter == 3)
+        //    sleep(50);
+        //printf("GS residual: %.10e\n", two_grid_residual);
     }
 
     tc6 = mytimer_cpu(); tw6 = mytimer_wall();
@@ -296,9 +303,10 @@ int main(int argc, char *argv[])
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
     //system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"heatmap_two_grid.gnu\"");
-    system("gnuplot -persist \"heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
-    system("gnuplot -persist \"heatmap_restriction.gnu\"");
-    system("gnuplot -persist \"heatmap_prolongation.gnu\"");
+    //system("gnuplot -persist \"heatmap_initial_residual.gnu\"");
+    //system("gnuplot -persist \"heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
+    //system("gnuplot -persist \"heatmap_restriction.gnu\"");
+    //system("gnuplot -persist \"heatmap_prolongation.gnu\"");
 
     //return 0;
 }

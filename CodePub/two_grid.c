@@ -9,11 +9,37 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    printf("Initial residual is %.10e\n", res_gs);
+
+    int i;
+    int q = (m-1) / 11; // nombre de fois que m-1 est multiple de 11
+    int m_coarse = (m-1)/2 + 1;
+    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+            - p_coarse; // number of points on the walls 
+    //printf("n_coarse: %d\n", n_coarse);   printf("Initial residual is %.10e\n", res_gs);
+
+    //FILE *f_out_initial_residual = fopen("mat/out_initial_residual.dat", "w");
+
+    //i = 0;
+
+    //for (int iy = 1; iy < m-1; iy++) { // vertical
+    //    for (int ix = 1; ix < m-1; ix++) { // horizontal
+    //        if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
+    //            fprintf(f_out_initial_residual, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (gs_r)[i]);
+    //            i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
+    //        }
+    //    }
+    //    fprintf(f_out_initial_residual, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
+    //}
+
+    //fclose(f_out_initial_residual);
+
     fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
     //fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
     res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    printf("Pre-smoothing residual is %.10e\n", res_gs);
+    //printf("Pre-smoothing residual is %.10e\n", res_gs);
 
     //for (int i = 0; i < n; i++) {
     //    printf("gs_r[%d] = %f", i, (gs_r)[i]); // test vector for debugging
@@ -26,14 +52,7 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
     }
 
     // restriction to the coarse grid
-    int q = (m-1) / 11; // nombre de fois que m-1 est multiple de 11
-    int m_coarse = (m-1)/2 + 1;
-    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
-    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
-    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
-            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
-            - p_coarse; // number of points on the walls 
-    //printf("n_coarse: %d\n", n_coarse);
+
     double *restr_r = malloc(n_coarse * sizeof(double));
 
     //for (int i = 0; i < n; i++) {
@@ -42,7 +61,7 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
 
     //FILE *f_out_residual = fopen("mat/out_residual.dat", "w");
 
-    //int i = 0;
+    //i = 0;
 
     //for (int iy = 1; iy < m-1; iy++) { // vertical
     //    for (int ix = 1; ix < m-1; ix++) { // horizontal
@@ -117,7 +136,7 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
     //    r_coarse[i] = 1.0; // test vector for debugging
     //}
 
-    //double *r_prol_no_solve = malloc(n * sizeof(double)); // debug
+    double *r_prol_no_solve = malloc(n * sizeof(double)); // debug
 
     //prolongation(m_coarse, q_coarse, &n_coarse, &restr_r, &r_prol_no_solve);
 
@@ -144,12 +163,12 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
     for (int i = 0; i < n; i++) {
         //printf("gs_x[%d]: %f\n", i, gs_x[i]); // debug
         //printf("r_prol[%d]: %f\n", i, r_prol[i]); // debug
-        gs_x[i] += r_prol[i];
+        gs_x[i] += r_prol[i]; // source of bug ????
     }
 
     double res_prolongation = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
 
-    printf("Post-prolongation residual is %.10e\n", res_prolongation);
+    //printf("Post-prolongation residual is %.10e\n", res_prolongation);
 
     bwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
     //bwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);    
@@ -158,7 +177,7 @@ double two_grid_method(int n, int m, double L, int *ia, int *ja, double *a, doub
 
     printf("Two-grid residual: %.10e\n", two_grid_residual);
 
-    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r); free(gs_r); free(restr_r); 
+    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r); free(gs_r); free(restr_r); free(r_prol); free(r_prol_no_solve);
 
     return two_grid_residual; // success
 }
