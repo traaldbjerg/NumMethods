@@ -10,6 +10,7 @@
 #include "gs.h"
 #include "projections.h"
 #include "two_grid.h"
+//#include "umfpack.h
 
 // Fonction main
 
@@ -18,25 +19,26 @@ int main(int argc, char *argv[])
     
     // déclarer les variables 
 
-    double (*rho_ptr)(double, double, double) = &rho;
-    int m = 1101;
-    int u = 0;
-    int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
+    //double (*rho_ptr)(double, double, double) = &rho;
+    int m = 155;
+    //int u = 0;
+    //int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int two_grid_iter = 17;
     int q = (m-1) / 11;
-    int use_petsc = 0; // activer ou déactiver l'utilisation de PETSc
-    double source_value = 500.0 ; // permet d'itérer sur les différentes valeurs de rho pour 
-    double flux_x, flux_y, rad_flux;
-    double source_save;
-    double save_dev;
-    double avrg, std_dev;
-    int dim;
+    int i;
+    //int use_petsc = 0; // activer ou déactiver l'utilisation de PETSc
+    //double source_value = 500.0 ; // permet d'itérer sur les différentes valeurs de rho pour 
+    //double flux_x, flux_y, rad_flux;
+    //double source_save;
+    //double save_dev;
+    //double avrg, std_dev;
+    //int dim;
     double L = 5.5;
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
 
-    if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
+    if (prob(m, &n, &ia, &ja, &a, &b, 1)) // source_value permet de lancer des simus de problèmes différents
         return 1;
     printf("\nPROBLEM: ");
     printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n]);
@@ -64,25 +66,25 @@ int main(int argc, char *argv[])
 
     // sauvegarder le vecteur solution pour faciliter la comparaison, principalement pour debug
 
-    FILE *f_out = fopen("mat/out_umfpack.dat", "w");
+    //FILE *f_out = fopen("mat/out_umfpack.dat", "w");
 
-    // créer le fichier de sortie pour gnuplot
+    //// créer le fichier de sortie pour gnuplot
 
-    int i = 0;
-    avrg = 0.0; // construit pour donner la moyenne
-    dim = 0; // taille de l'échantillon
+    //int i = 0;
+    ////avrg = 0.0; // construit pour donner la moyenne
+    ////dim = 0; // taille de l'échantillon
 
-    for (int iy = 1; iy < m-1; iy++) { // vertical
-        for (int ix = 1; ix < m-1; ix++) { // horizontal
-            if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
-                fprintf(f_out, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
-                i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
-            }
-        }
-        fprintf(f_out, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
-    }
+    //for (int iy = 1; iy < m-1; iy++) { // vertical
+    //    for (int ix = 1; ix < m-1; ix++) { // horizontal
+    //        if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
+    //            fprintf(f_out, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
+    //            i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
+    //        }
+    //    }
+    //    fprintf(f_out, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
+    //}
 
-    fclose(f_out); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
+    //fclose(f_out); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
 
     printf("\nTemps de solution, UMFPACK (CPU): %5.1f sec",tc2-tc1); // mis à jour le 13/10/22 
     printf("\nTemps de solution, UMFPACK (horloge): %5.1f sec \n",tw2-tw1); // mis à jour le 13/10/22 
@@ -182,12 +184,21 @@ int main(int argc, char *argv[])
 
 */
 
+    
+    /* initialisation des paramètres par défaut */
+    //double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
+    //void *Symbolic, *Numeric ;
+    //double *ia_coarse, *ja_coarse, *a_coarse, *b_coarse;
+    //generate_coarse_problem(m, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, Symbolic, Numeric, Info, Control);
+
     double two_grid_residual = 1.0;
 
     int counter = 0;
     tc5 = mytimer_cpu(); tw5 = mytimer_wall();
     while (two_grid_residual > 8e-15) {
-        two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, x, gs_x);
+        two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
+        //two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, &ia_coarse, &ja_coarse, &a_coarse,
+        //                                                    &b_coarse, Symbolic, Numeric, Info, Control);
         counter++;
     }
 
@@ -228,9 +239,66 @@ int main(int argc, char *argv[])
     fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
     //sleep(1); // permet à gnuplot de lire le fichier avant de le supprimer
 
+    int m_coarse = (m-1)/2 + 1;
+    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+            - p_coarse; // number of points on the walls
+
+
+    // RECONSTRUCT PROLONGATION AND RESTRICTION MATRICES IN MATLAB
+
+    //FILE *f_r_iaa = fopen("misc/r_iaa.txt", "w");
+    //FILE *f_r_ja = fopen("misc/r_ja.txt", "w");
+    //FILE *f_r_a = fopen("misc/r_a.txt", "w");
+
+    //printf("RESTRICTION MATRIX\n");
+
+    //for (int i = 0; i < n; i++) { // debugging restriction and projection matrices
+    //    double *e = calloc(1, n * sizeof(double));
+    //    e[i] = 1.0; // reset the solution to compare the 2 methods
+    //    double *e_restr = malloc(n_coarse * sizeof(double));
+    //    restriction(m_coarse, q_coarse, &n_coarse, &e, &e_restr);
+
+    //    for (int j = 0; j < n_coarse; j++) {
+    //        if (e_restr[j] == 1.0) {
+    //            fprintf(f_r_iaa, "%d\n", j);
+    //            fprintf(f_r_ja, "%d\n", i);
+    //            fprintf(f_r_a, "%f\n", e_restr[j]);
+    //        }
+    //    }
+    //}
+
+    //FILE *f_p_iaa = fopen("misc/p_iaa.txt", "w");
+    //FILE *f_p_ja = fopen("misc/p_ja.txt", "w");
+    //FILE *f_p_a = fopen("misc/p_a.txt", "w");
+
+    //printf("PROLONGATION MATRIX\n");
+
+    //for (int i = 0; i < n_coarse; i++) { // debugging restriction and projection matrices
+    //    double *e = calloc(1, n_coarse * sizeof(double));
+    //    e[i] = 1.0; // reset the solution to compare the 2 methods
+    //    double *e_prol = malloc(n * sizeof(double));
+    //    prolongation(m_coarse, q_coarse, &n_coarse, &e, &e_prol);
+
+    //    for (int j = 0; j < n; j++) {
+    //        if (e_prol[j] != 0.0) {
+    //            fprintf(f_p_iaa, "%d\n", j);
+    //            fprintf(f_p_ja, "%d\n", i);
+    //            fprintf(f_p_a, "%f\n", e_prol[j]);
+    //        }
+    //    }
+    //}
+
+    //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
+
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
-    system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
-    system("gnuplot -persist \"heatmap_two_grid.gnu\"");
-    
-    return 0;
+    //system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
+    //system("gnuplot -persist \"heatmap_two_grid.gnu\"");
+    system("gnuplot -persist \"heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
+    system("gnuplot -persist \"heatmap_restriction.gnu\"");
+    system("gnuplot -persist \"heatmap_prolongation.gnu\"");
+
+    //return 0;
 }

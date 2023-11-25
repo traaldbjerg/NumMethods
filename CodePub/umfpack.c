@@ -85,8 +85,7 @@ int solve_umfpack(int n, int *ia, int *ja, double *a,
 }
 
 
-int factorize_umfpack(int n, int *ia, int *ja, double *a, 
-                   void **Symbolic, void **Numeric, double *Info, double *Control)
+void* factorize_umfpack(int n, int *ia, int *ja, double *a)
 /*
    But
    ===
@@ -116,6 +115,10 @@ int factorize_umfpack(int n, int *ia, int *ja, double *a,
     /* initialization */
 
     int status;
+    double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
+    void *Symbolic, *Numeric ;
+    //int status;
+
     //double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
     //void *Symbolic, *Numeric ;
     
@@ -154,15 +157,16 @@ int factorize_umfpack(int n, int *ia, int *ja, double *a,
 
     (void) umfpack_di_report_numeric (Numeric, Control) ;
 
-    return 0;
+    return Numeric;
 }
 
 
 int solve_umfpack_factorized(int n, int *ia, int *ja, double *a, 
-                            double *b, double *x, void **Symbolic, void **Numeric, double *Info, double *Control) {
+                            double *b, double *x, void *Numeric) {
 
     int status;
     /* solution */
+    double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
     /* status = umfpack_di_solve (UMFPACK_A, ia, ja, a, x, b, Numeric, Control, Info) ;*/
     status = umfpack_di_solve (UMFPACK_At, ia, ja, a, x, b, Numeric, Control, Info) ;
     /* UMFPACK utilise CSC et pas CSR =>  */
@@ -175,3 +179,4 @@ int solve_umfpack_factorized(int n, int *ia, int *ja, double *a,
     return 0;
    
 }
+

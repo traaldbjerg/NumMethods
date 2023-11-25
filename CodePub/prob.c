@@ -41,7 +41,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
 */
 
 {
-    int  nnz, ix, iy, ind, q, p, nb_next_to_wall, nb_dir;
+    int  nnz, ix, iy, ind, q, p, nb_next_to_wall, nb_dir, *iaa;
     double invh2, L = 5.5, Tp = 20.0;
 
     if(m <= 1 || (m - 1) % 11 != 0) { // multiple de 11 pour éviter des descriptions non idéales des CB
@@ -77,6 +77,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
     /* allocation des tableaux */
 
     *ia  = malloc((*n + 1) * sizeof(int));
+    iaa  = malloc(nnz * sizeof(int));
     *ja  = malloc(nnz * sizeof(int));
     *a   = malloc(nnz * sizeof(double));
     *b   = malloc(*n * sizeof(double));
@@ -114,8 +115,10 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
                         (*a)[nnz] = -invh2;
                         if ((q * 6 < iy)) { // en face de la porte
                             (*ja)[nnz] = ind - q * 3 + 1; // il y a moins d'inconnues sur cette bande => il faut moins diminuer les indices
+                            (iaa)[nnz] = ind; // for ijv format for MATLAB
                         } else {
                             (*ja)[nnz] = ind - m + 2; // +2 because there are less points to go back over now that all the walls are dirichlet
+                            (iaa)[nnz] = ind; // for ijv format for MATLAB
                         }
                         nnz++;
                     }
@@ -127,6 +130,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
                     } else {
                         (*a)[nnz] = -invh2; 
                         (*ja)[nnz] = ind - 1;
+                        (iaa)[nnz] = ind; // for ijv format for MATLAB
                         nnz++;
                     }
                     
@@ -134,6 +138,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
                     //printf("Hello this is diag, ind = %d, nnz = %d\n", ind, nnz);
                     (*a)[nnz] = 4.0*invh2;
                     (*ja)[nnz] = ind;
+                    (iaa)[nnz] = ind; // for ijv format for MATLAB
                     nnz++;
 
                 /* remplissage de la ligne : voisin est */
@@ -143,6 +148,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
                     } else { // on saute le point juste à gauche de la fenêtre, puisque Tf = 0 Dirichlet ne fait rien
                         (*a)[nnz] = -invh2;
                         (*ja)[nnz] = ind + 1;
+                        (iaa)[nnz] = ind; // for ijv format for MATLAB
                         nnz++;
                     }
 
@@ -154,8 +160,10 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
                         (*a)[nnz] = -invh2;
                         if ((q * 6 <= iy)) {
                             (*ja)[nnz] = ind + q * 3 - 1; // il y a moins d'inconnues sur cette bande => il faut moins augmenter les indices
+                            (iaa)[nnz] = ind; // for ijv format for MATLAB
                         } else {
                             (*ja)[nnz] = ind + m - 2; // sinon il y a m-2 points dans la liste avant d'arriver au point spatialement au dessus
+                            (iaa)[nnz] = ind; // for ijv format for MATLAB
                         }
                         nnz++;
                     }
@@ -177,6 +185,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
         // création des fichiers
 
         FILE *f_ia = fopen("mat/ia.txt", "w");
+        FILE *f_iaa = fopen("mat/iaa.txt", "w"); // for ijv format for MATLAB
         FILE *f_ja = fopen("mat/ja.txt", "w");
         FILE *f_a = fopen("mat/a.txt", "w");
         FILE *f_b = fopen("mat/b.txt", "w");
@@ -185,6 +194,10 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
 
         for (int i = 0; i < *n + 1; i++) {
             fprintf(f_ia, "%d\n", (*ia)[i]);
+        }
+
+        for (int i = 0; i < nnz; i++) {
+            fprintf(f_iaa, "%d\n", (iaa)[i] + 1);
         }
 
         for (int i = 0; i < nnz; i++) {
@@ -199,7 +212,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a, double **b, int write) /
             fprintf(f_b, "%f\n", (*b)[i]);
         }
 
-        fclose(f_ia); fclose(f_ja); fclose(f_a); fclose(f_b); // fermer les fichiers proprement
+        fclose(f_ia); fclose(f_ja); fclose(f_a); fclose(f_iaa); fclose(f_b); // fermer les fichiers proprement
 
     }
 

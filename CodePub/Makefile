@@ -36,7 +36,8 @@ clean:
 	rm main
 
 main: main.c prob.o time.o  umfpack.o residual.o rho.o heatflux.o gs.o projections.o two_grid.o #petsc.o
-	cc -g $(COPT) $^ -o $@ $(LIB1) $(LIB2)
+	cc -g $(COPT) $^ -o $@ $(LIB1) $(LIB2) -ISuiteSpare/UMFPACK/Include \
+  -ISuiteSparse/SuiteSparse_config  -ISuiteSparse/AMD/Include
 
 umfpack.o: umfpack.c
 	cc -g $(COPT) -c $< -o $@ -ISuiteSparse/UMFPACK/Include \

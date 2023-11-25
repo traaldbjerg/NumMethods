@@ -1,4 +1,4 @@
-void restriction(int m, int q, int *n, int **ia, int **ja, double **a, double **b, double **x, double **r, double **r_restr) {
+void restriction(int m, int q, int *n, double **r, double **r_restr) {
     /*function which restricts the fine residue to a coarser grid*/
 
     // get the new amount of points, variables and so forth
@@ -87,8 +87,8 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                             jump += 2 * (m_coarse-2) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
                             i--; // we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
                         } else {
-                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j-1] + (*r_coarse)[i+j-1-m_coarse+2]);
-                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i-m_coarse+3]);
+                            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i+j-m_coarse+3] + (*r_coarse)[i+j-1] + (*r_coarse)[i+j-1-m_coarse+2]);
+                            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i+j-m_coarse+3]);
                         }
                     }
                 }
@@ -121,8 +121,8 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                     i--;// we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
                     swap = 0; // switch the condition off 
                 } else if (j == (3 * q_coarse - 1)) { // next to the obtuse corner
-                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i-m_coarse+3] + (*r_coarse)[i+j-1] + (*r_coarse)[i+j-1-m_coarse+2]);
-                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i-m_coarse+3]);
+                    (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-m_coarse+3] + (*r_coarse)[i+j-1] + (*r_coarse)[i+j-1-m_coarse+2]);
+                    (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-m_coarse+3]);
                 } else if (j > (3 * q_coarse - 1)) { // next to the upper right wall
                                                    // this condition was the source of many bugs because it needs to be after the end of row one
                                                    // otherwise the end of wall condition is never reached
@@ -164,7 +164,7 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                 }
             } else { // if we are on a fine row with no coarse points
                 // need to take care of the last row of the small rectangle, special case with less terms in the sums OUTSIDE OF THE FOR LOOP
-                for (int j = 0; j < 3 * q_coarse-1; j++) {
+                for (int j = 0; j < (3 * q_coarse-1); j++) {
                     if (j % (3 * q_coarse-1) == 0) { // next to the first wall
                         (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i+j-1-3 * q_coarse+2]);
                         (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i+j-1-3 * q_coarse+2]);
@@ -186,8 +186,8 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
                         jump += 2 * (3 * q_coarse-1) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
                         i--; // we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
                     } else {
-                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i-3 * q_coarse+2] + (*r_coarse)[i+j-1] + (*r_coarse)[i+j-1-3 * q_coarse+1]);
-                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i-3 * q_coarse+2]);
+                        (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i+j-3 * q_coarse+2] + (*r_coarse)[i+j-1] + (*r_coarse)[i+j-1-3 * q_coarse+1]);
+                        (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1+1] + (*r_coarse)[i+j-3 * q_coarse+2]);
                     }
                 }
             }
@@ -196,7 +196,7 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
 
     // do the last row of the fine grid outside of the for loop
     int i = *n_coarse;
-    for (int j = 0; j < 3 * q_coarse-1; j++) {
+    for (int j = 0; j < (3 * q_coarse-1); j++) {
         if (j % (3 * q_coarse-1) == 0) { // next to the first wall
             (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1-3 * q_coarse+2]);
             (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1-3 * q_coarse+2]);
@@ -215,9 +215,8 @@ void prolongation(int m_coarse, int q_coarse, int *n_coarse, double **r_coarse, 
             jump += 2 * (3 * q_coarse-1) + 1; // we have jumped a row, so we need to add the number of fine points in a row to the jump
             i--; // we have not iterated over the coarse vector, so we need to go back one step, otherwise i gets too big
         } else {
-            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i-3 * q_coarse+2] + (*r_coarse)[i+j-1-3 * q_coarse+1]);
-            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i-3 * q_coarse+2]);
+            (*r_prol)[2*i+jump+2*j] = 0.25 * ((*r_coarse)[i+j-1-3 * q_coarse+2] + (*r_coarse)[i+j-1-3 * q_coarse+1]);
+            (*r_prol)[2*i+jump+2*j+1] = 0.5 * ((*r_coarse)[i+j-1-3 * q_coarse+2]);
         }
     }
-
 }
