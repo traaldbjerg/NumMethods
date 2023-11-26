@@ -18,3 +18,4 @@ set zrange [z_min:z_max]
 #    eval "set pm3d corners2color ".mode
     splot "mat/out_prolongation.dat" using 2:1:3 with pm3d
 #}
+replot

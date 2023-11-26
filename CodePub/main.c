@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
     double *a, *b, *x, *gs_x;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
     void *Numeric;
+    double *res_vector;
 
     if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
         return 1;
@@ -209,6 +210,8 @@ int main(int argc, char *argv[])
     double two_grid_residual = 1.0;
 
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    res_vector = malloc(50 * sizeof(double));
+    res_vector[0] = two_grid_residual;
 
     int counter = 0;
     tc5 = mytimer_cpu(); tw5 = mytimer_wall();
@@ -221,6 +224,7 @@ int main(int argc, char *argv[])
         two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, ia_coarse, ja_coarse, a_coarse,
                                                             b_coarse, Numeric);
         counter++;
+        res_vector[counter] = two_grid_residual;
         //if (counter == 3)
         //    sleep(50);
         //printf("GS residual: %.10e\n", two_grid_residual);
@@ -232,6 +236,14 @@ int main(int argc, char *argv[])
     printf("\nSolution time, two-grid method + factorization (CPU): %5.2f sec",tc6-tc4);
     printf("\nSolution time, two-grid method + factorization (clock): %5.2f sec \n",tw6-tw4);
     printf("Number of iterations : %d\n", counter);
+
+    FILE *f_res_plot = fopen("mat/two_grid_residual_evolution.dat", "w");
+
+    for (int i = 0; i < counter; i++) { // we only go to counter so we don't print the uninitialized values in res_vector (which is allocated extra to avoid going over the max index)
+        fprintf(f_res_plot, "%d %.5e\n", i, res_vector[i]);
+    }
+
+    fclose(f_res_plot);
 
     //for (int i = 0; i < n; i++) {
     //    gs_x[i] = 0.0; // reset the solution to compare the 2 methods
@@ -320,13 +332,14 @@ int main(int argc, char *argv[])
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
-    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
+    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
     //system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"heatmap_two_grid.gnu\"");
     //system("gnuplot -persist \"heatmap_initial_residual.gnu\"");
     //system("gnuplot -persist \"heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"heatmap_restriction.gnu\"");
     //system("gnuplot -persist \"heatmap_prolongation.gnu\"");
+    system("gnuplot -persist \"two_grid_residual_plot.gnu\"");
 
-    //return 0;
+    return 0;
 }
