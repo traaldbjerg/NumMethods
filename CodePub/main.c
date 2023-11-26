@@ -333,13 +333,13 @@ int main(int argc, char *argv[])
 
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
     free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
-    //system("gnuplot -persist \"heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
-    //system("gnuplot -persist \"heatmap_two_grid.gnu\"");
-    //system("gnuplot -persist \"heatmap_initial_residual.gnu\"");
-    //system("gnuplot -persist \"heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
-    //system("gnuplot -persist \"heatmap_restriction.gnu\"");
-    //system("gnuplot -persist \"heatmap_prolongation.gnu\"");
-    system("gnuplot -persist \"two_grid_residual_plot.gnu\"");
+    //system("gnuplot -persist \"scripts/heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
+    //system("gnuplot -persist \"scripts/heatmap_two_grid.gnu\"");
+    //system("gnuplot -persist \"scripts/heatmap_initial_residual.gnu\"");
+    //system("gnuplot -persist \"scripts/heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
+    //system("gnuplot -persist \"scripts/heatmap_restriction.gnu\"");
+    //system("gnuplot -persist \"scripts/heatmap_prolongation.gnu\"");
+    system("gnuplot -persist \"scripts/two_grid_residual_plot.gnu\"");
 
     return 0;
 }
