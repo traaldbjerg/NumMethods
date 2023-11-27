@@ -19,8 +19,19 @@ int main(int argc, char *argv[])
     
     // déclarer les variables 
 
-    //double (*rho_ptr)(double, double, double) = &rho;
-    int m = 1101;
+    // possible m values for multigrid :
+    // 1 : 23
+    // 2 : 45
+    // 3 : 89
+    // 4 : 177
+    // 5 : 353
+    // 6 : 705
+    // 7 : 1409
+    // 8 : 2817
+    // 9 : 5633
+    // 10 : 11265
+    // 11 : 22529
+    int m = 705;
     //int u = 0;
     //int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
     int two_grid_iter = 17;
@@ -34,16 +45,29 @@ int main(int argc, char *argv[])
     //double avrg, std_dev;
     //int dim;
     double L = 5.5;
+    double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
-    double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
+    // multigrid declarations
+    int max_recursion = 5;
+    int **ia_ptr, **ja_ptr;
+    double **a_ptr, **b_ptr;
     void *Numeric;
+    void **Numeric_ptr;
     double *res_vector;
 
-    if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
-        return 1;
-    printf("\nPROBLEM: ");
-    printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n]);
+    ia_ptr = malloc(max_recursion * sizeof(int *));
+    ja_ptr = malloc(max_recursion * sizeof(int *));
+    a_ptr = malloc(max_recursion * sizeof(double *));
+    b_ptr = malloc(max_recursion * sizeof(double *));
+    Numeric_ptr = malloc(max_recursion * sizeof(void *));
+
+    generate_multigrid_problem(max_recursion, m, ia_ptr, ja_ptr, a_ptr, b_ptr, Numeric_ptr);
+
+    //if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
+    //    return 1;
+    //printf("\nPROBLEM: ");
+    //printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n]);
 
     // allouer la mémoire pour le vecteur de solution 
 
@@ -187,63 +211,63 @@ int main(int argc, char *argv[])
 */
 
     
-    /* initialisation des paramètres par défaut */
-    //double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
-    //void *Symbolic, *Numeric ;
-    double *ia_coarse, *ja_coarse, *a_coarse, *b_coarse;
-    //generate_coarse_problem(m, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, Symbolic, Numeric, Info, Control);
-    int m_coarse = (m-1)/2 + 1;
-    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
-    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
-    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
-            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
-            - p_coarse; // number of points on the walls
-    double *x_coarse = malloc(n_coarse * sizeof(double));
+    ///* initialisation des paramètres par défaut */
+    ////double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
+    ////void *Symbolic, *Numeric ;
+    //double *ia_coarse, *ja_coarse, *a_coarse, *b_coarse;
+    ////generate_coarse_problem(m, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, Symbolic, Numeric, Info, Control);
+    //int m_coarse = (m-1)/2 + 1;
+    //int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    //int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    //int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+    //        - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+    //        - p_coarse; // number of points on the walls
+    //double *x_coarse = malloc(n_coarse * sizeof(double));
 
-    tc4 = mytimer_cpu(); tw4 = mytimer_wall();
+    //tc4 = mytimer_cpu(); tw4 = mytimer_wall();
     
-    prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0);
+    //prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0);
     
-    Numeric = factorize_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse);
-    //generate_coarse_problem(m, ia_coarse, ja_coarse, a_coarse, b_coarse, Numeric);
+    //Numeric = factorize_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse);
+    ////generate_coarse_problem(m, ia_coarse, ja_coarse, a_coarse, b_coarse, Numeric);
 
-    double two_grid_residual = 1.0;
+    //double two_grid_residual = 1.0;
 
-    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    res_vector = malloc(50 * sizeof(double));
-    res_vector[0] = two_grid_residual;
+    //double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    //res_vector = malloc(50 * sizeof(double));
+    //res_vector[0] = two_grid_residual;
 
-    int counter = 0;
-    tc5 = mytimer_cpu(); tw5 = mytimer_wall();
-    while (two_grid_residual > 6.5e-15) {
-        //fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-        //two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-        //two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
-        //two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, &ia_coarse, &ja_coarse, &a_coarse,
-        //                                                    &b_coarse, Symbolic, Numeric, Info, Control);
-        two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, ia_coarse, ja_coarse, a_coarse,
-                                                            b_coarse, Numeric);
-        counter++;
-        res_vector[counter] = two_grid_residual;
-        //if (counter == 3)
-        //    sleep(50);
-        //printf("GS residual: %.10e\n", two_grid_residual);
-    }
+    //int counter = 0;
+    //tc5 = mytimer_cpu(); tw5 = mytimer_wall();
+    //while (two_grid_residual > 9e-15) {
+    //    //fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    //    //two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    //    //two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
+    //    //two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, &ia_coarse, &ja_coarse, &a_coarse,
+    //    //                                                    &b_coarse, Symbolic, Numeric, Info, Control);
+    //    two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, ia_coarse, ja_coarse, a_coarse,
+    //                                                        b_coarse, Numeric);
+    //    counter++;
+    //    res_vector[counter] = two_grid_residual;
+    //    //if (counter == 3)
+    //    //    sleep(50);
+    //    //printf("GS residual: %.10e\n", two_grid_residual);
+    //}
 
-    tc6 = mytimer_cpu(); tw6 = mytimer_wall();
-    printf("\nSolution time, two-grid method (CPU): %5.2f sec",tc6-tc5);
-    printf("\nSolution time, two-grid method (clock): %5.2f sec \n",tw6-tw5);
-    printf("\nSolution time, two-grid method + factorization (CPU): %5.2f sec",tc6-tc4);
-    printf("\nSolution time, two-grid method + factorization (clock): %5.2f sec \n",tw6-tw4);
-    printf("Number of iterations : %d\n", counter);
+    //tc6 = mytimer_cpu(); tw6 = mytimer_wall();
+    //printf("\nSolution time, two-grid method (CPU): %5.2f sec",tc6-tc5);
+    //printf("\nSolution time, two-grid method (clock): %5.2f sec \n",tw6-tw5);
+    //printf("\nSolution time, two-grid method + factorization (CPU): %5.2f sec",tc6-tc4);
+    //printf("\nSolution time, two-grid method + factorization (clock): %5.2f sec \n",tw6-tw4);
+    //printf("Number of iterations : %d\n", counter);
 
-    FILE *f_res_plot = fopen("mat/two_grid_residual_evolution.dat", "w");
+    //FILE *f_res_plot = fopen("mat/two_grid_residual_evolution.dat", "w");
 
-    for (int i = 0; i < counter; i++) { // we only go to counter so we don't print the uninitialized values in res_vector (which is allocated extra to avoid going over the max index)
-        fprintf(f_res_plot, "%d %.5e\n", i, res_vector[i]);
-    }
+    //for (int i = 0; i < counter; i++) { // we only go to counter so we don't print the uninitialized values in res_vector (which is allocated extra to avoid going over the max index)
+    //    fprintf(f_res_plot, "%d %.5e\n", i, res_vector[i]);
+    //}
 
-    fclose(f_res_plot);
+    //fclose(f_res_plot);
 
     //for (int i = 0; i < n; i++) {
     //    gs_x[i] = 0.0; // reset the solution to compare the 2 methods
@@ -260,21 +284,21 @@ int main(int argc, char *argv[])
 
     // créer le fichier de sortie pour gnuplot 
 
-    FILE *f_out_two = fopen("mat/out_two_grid.dat", "w");
+    //FILE *f_out_two = fopen("mat/out_two_grid.dat", "w");
 
-    i = 0;
+    //i = 0;
 
-    for (int iy = 1; iy < m-1; iy++) { // vertical
-        for (int ix = 1; ix < m-1; ix++) { // horizontal
-            if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
-                fprintf(f_out_two, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (gs_x)[i]);
-                i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
-            }
-        }
-        fprintf(f_out_two, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
-    }
+    //for (int iy = 1; iy < m-1; iy++) { // vertical
+    //    for (int ix = 1; ix < m-1; ix++) { // horizontal
+    //        if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
+    //            fprintf(f_out_two, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (gs_x)[i]);
+    //            i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
+    //        }
+    //    }
+    //    fprintf(f_out_two, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
+    //}
 
-    fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
+    //fclose(f_out_two); // très important, sinon affichage incomplet de out.dat par gnuplot (optimisations compilateur n'attendaient pas l'écriture du fichier?)
     //sleep(1); // permet à gnuplot de lire le fichier avant de le supprimer
 
     //int m_coarse = (m-1)/2 + 1;
@@ -332,14 +356,15 @@ int main(int argc, char *argv[])
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
-    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
+    free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr); free(Numeric_ptr);
+    //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
     //system("gnuplot -persist \"scripts/heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"scripts/heatmap_two_grid.gnu\"");
     //system("gnuplot -persist \"scripts/heatmap_initial_residual.gnu\"");
     //system("gnuplot -persist \"scripts/heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"scripts/heatmap_restriction.gnu\"");
     //system("gnuplot -persist \"scripts/heatmap_prolongation.gnu\"");
-    system("gnuplot -persist \"scripts/two_grid_residual_plot.gnu\"");
+    //system("gnuplot -persist \"scripts/two_grid_residual_plot.gnu\"");
 
     return 0;
 }
