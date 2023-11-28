@@ -179,4 +179,3 @@ int solve_umfpack_factorized(int n, int *ia, int *ja, double *a,
     return 0;
    
 }
-

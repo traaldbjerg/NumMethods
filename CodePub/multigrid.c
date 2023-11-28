@@ -23,8 +23,8 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double res_gs; //= residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    fwd_gs(m, L, &n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x); 
-    res_gs = residual(&n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x, &gs_r);
+    fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x); 
+    res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
 
     printf("Post-smoothing residual: %.10e\n", res_gs);
 
@@ -43,14 +43,14 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     double *correction = calloc(1, n_coarse * sizeof(double));
 
     if (c == max_recursion) { // we are at the coarsest grid, we can solve the problem directly
-        printf("I am solving now, c = %d\n", c);
-        if (solve_umfpack_factorized(n_coarse, ia_ptr[c], ja_ptr[c], a_ptr[c], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
+        //printf("I am solving now, c = %d\n", c); //debug
+        if (solve_umfpack_factorized(n_coarse, ia_ptr[c+1], ja_ptr[c+1], a_ptr[c+1], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
                                                                                           // which we will use to compute the prolongation and go back to the fine grid  
             free(correction); // prevents memory leak
             sleep(1); // debug
             return 1;
         }
-    } else {
+    } else { // go to the coarser level
         if (v_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
             free(correction); // prevents memory leak
             sleep(1); // debug
@@ -68,9 +68,9 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
         gs_x[i] += correction_prol[i];
     }
 
-    bwd_gs(m, L, &n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x);
+    bwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x);
 
-    double multigrid_residual = residual(&n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x, &gs_r);
+    double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
 
     printf("Multigrid residual: %.10e\n", multigrid_residual);
 
@@ -79,6 +79,94 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     return 0; // success
 
 }
+
+
+
+double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
+                             double **a_ptr, double *b, double *gs_x, void *Numeric) {
+
+    // this function is called recursively, c indicates the level of recursion
+    // the first recursion starts at c = 1, and stops at current recursion = max_recursion
+    // the last recursion is the coarsest grid, and the first recursion is the finest grid
+    // uses the factorized coarsest problem matrix to solve the coarsest problem
+    // then uses the solution to the coarse problem to improve the solution to the fine problem
+
+    for (int i = 0; i < n; i++) {
+        //printf("This is ia_ptr[%d][%d] = %d\n", c-1, i, ia_ptr[c-1][i]);
+    }
+
+    double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    double res_gs; //= residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x); 
+    res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
+
+    printf("This is c: %d\n", c); // check to see if it is actually a w-cycle or not
+    //printf("Post-smoothing residual: %.10e\n", res_gs);
+
+    // restriction to the coarse grid
+    int m_coarse = (m-1)/2 + 1;
+    int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
+    int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
+    int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
+            - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
+            - p_coarse; // number of points on the walls
+            
+    double *restr_r = malloc(n_coarse * sizeof(double));
+
+    restriction(m_coarse, q_coarse, &n_coarse, &gs_r, &restr_r);
+
+    double *correction = calloc(1, n_coarse * sizeof(double));
+
+    if (c == max_recursion) { // we are at the coarsest grid, we can solve the problem directly
+        //printf("I am solving now, c = %d\n", c); //debug
+        if (solve_umfpack_factorized(n_coarse, ia_ptr[c+1], ja_ptr[c+1], a_ptr[c+1], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
+                                                                                          // which we will use to compute the prolongation and go back to the fine grid  
+            free(correction); // prevents memory leak
+            sleep(1); // debug
+            return 1;
+        }
+    } else { // go to the coarser level BUT DO IT TWICE FOR THE W CYCLE
+        if (w_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
+            free(correction); // prevents memory leak
+            sleep(1); // debug
+            return 1;
+        }
+        printf("This is intermediary c = %d\n", c); // check to see if it is actually a w-cycle or not
+        if (c != 0) {
+            if (w_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
+                free(correction); // prevents memory leak
+                sleep(1); // debug
+                return 1;
+            }
+        }
+    }
+
+    double *correction_prol = malloc(n * sizeof(double));
+
+    prolongation(m_coarse, q_coarse, &n_coarse, &correction, &correction_prol);
+
+    //construct the x vector from this improvement to the residual
+
+    for (int i = 0; i < n; i++) {
+        gs_x[i] += correction_prol[i];
+    }
+
+    bwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x);
+
+    double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
+
+    //printf("Multigrid residual: %.10e\n", multigrid_residual);
+
+    free(r); free(gs_r); free(restr_r); free(correction); free(correction_prol);
+
+    printf("This is final c: %d\n", c); // check to see if it is actually a w-cycle or not
+
+    return 0; // success
+
+}
+
+
 
 void *generate_multigrid_problem(int max_recursion, int m, int **ia_ptr, int **ja_ptr, double **a_ptr, 
                     double **b_ptr) 
@@ -93,7 +181,7 @@ void *generate_multigrid_problem(int max_recursion, int m, int **ia_ptr, int **j
     int m_copy = m-1;
     void *Numeric; // will be used to store the LU factorization of the coarse matrix
 
-    for (int i = 0; i < max_recursion; i++) { // separate loop to avoid doing a lot of work to find out at the end that m is not acceptable
+    for (int i = 0; i < max_recursion + 1; i++) { // separate loop to avoid doing a lot of work to find out at the end that m is not acceptable
 
     //printf("hello: %d\n", m_copy);
 
@@ -106,7 +194,7 @@ void *generate_multigrid_problem(int max_recursion, int m, int **ia_ptr, int **j
         }
     }
 
-    for (int i = 0; i <= max_recursion; i++) { // iterate over the levels of the multigrid, generate all matrices
+    for (int i = 0; i <= max_recursion + 1; i++) { // iterate over the levels of the multigrid, generate all matrices
         // prepare the values for the coarse problem
         int q = (m-1) / 11; // nombre de fois que m-1 est multiple de 11
         int p = 4 * m - 4; // nombre de points sur le périmètre
@@ -117,7 +205,7 @@ void *generate_multigrid_problem(int max_recursion, int m, int **ia_ptr, int **j
         if (prob(m, &n, &ia_ptr[i], &ja_ptr[i], &a_ptr[i], &b_ptr[i], 0))
             return 1;
         
-        if (i == max_recursion) // we only need to build the last LU factorization
+        if (i == max_recursion + 1) // we only need to build the last LU factorization
             Numeric = factorize_umfpack(n, ia_ptr[i], ja_ptr[i], a_ptr[i]); 
 
         m = (m-1)/2 + 1; // go down a level, might be a problem if the lowest level is m = 12
