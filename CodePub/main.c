@@ -10,6 +10,7 @@
 #include "gs.h"
 #include "projections.h"
 #include "two_grid.h"
+#include "multigrid.h"
 //#include "umfpack.h
 
 // Fonction main
@@ -31,52 +32,85 @@ int main(int argc, char *argv[])
     // 9 : 5633
     // 10 : 11265
     // 11 : 22529
-    int m = 705;
-    //int u = 0;
-    //int iter_max = 0; // régler le nombre d'itérations, mettre à 0 si on ne cherche pas à minimiser std_dev/avrg
-    int two_grid_iter = 17;
+    int m =  2817;
+    //int two_grid_iter = 17;
     int q = (m-1) / 11;
     int i;
-    //int use_petsc = 0; // activer ou déactiver l'utilisation de PETSc
-    //double source_value = 500.0 ; // permet d'itérer sur les différentes valeurs de rho pour 
-    //double flux_x, flux_y, rad_flux;
-    //double source_save;
-    //double save_dev;
-    //double avrg, std_dev;
-    //int dim;
     double L = 5.5;
     double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
     // multigrid declarations
     int max_recursion = 5;
+    int counter;
     int **ia_ptr, **ja_ptr;
     double **a_ptr, **b_ptr;
     void *Numeric;
-    void **Numeric_ptr;
     double *res_vector;
-
+    int p = 4 * m - 4; // nombre de points sur le périmètre
+    int nb_dir = p; // nombre de points sur une porte/fenêtre
+    n = m * m // nombre total de points dans le carré
+        - (5 * q) * (8 * q) // nombre de points dans le rectangle supérieur droit
+        - nb_dir; // number of points on the walls
     ia_ptr = malloc(max_recursion * sizeof(int *));
     ja_ptr = malloc(max_recursion * sizeof(int *));
     a_ptr = malloc(max_recursion * sizeof(double *));
     b_ptr = malloc(max_recursion * sizeof(double *));
-    Numeric_ptr = malloc(max_recursion * sizeof(void *));
 
-    generate_multigrid_problem(max_recursion, m, ia_ptr, ja_ptr, a_ptr, b_ptr, Numeric_ptr);
+    tc1 = mytimer_cpu(); tw1 = mytimer_wall(); // mis à jour le 13/10/22
 
-    //if (prob(m, &n, &ia, &ja, &a, &b, 0)) // source_value permet de lancer des simus de problèmes différents
-    //    return 1;
-    //printf("\nPROBLEM: ");
-    //printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n]);
+    Numeric = generate_multigrid_problem(max_recursion, m, ia_ptr, ja_ptr, a_ptr, b_ptr);
 
-    // allouer la mémoire pour le vecteur de solution 
+    //for (int i = 0; i < n; i++) {
+    //    printf("ia_ptr[0][%d] = %d\n", i, ia_ptr[0][i]);
+    //}
+
+    printf("\nPROBLEM: ");
+    printf("m = %5d   n = %8d\n", m, n);
+
+    // around 0.3 seconds for matrix generation for m = 2817 so this is not a costly step
+
+    // allocate memory for the solution vector 
 
     x = calloc(1, n * sizeof(double));
     gs_x = calloc(1, n * sizeof(double));
     if ( x == NULL ) {
-    printf("\n ERREUR : pas de mémoire pour vecteur des solutions\n\n");
+    printf("\n ERREUR : not enough memory for solution vector\n\n");
         return 1;
     }
+
+    double multigrid_residual = 1.0;
+
+    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
+    int status = 0;
+    res_vector = malloc(50 * sizeof(double));
+    res_vector[0] = multigrid_residual;
+
+    counter = 0;
+    tc5 = mytimer_cpu(); tw5 = mytimer_wall();
+    while ((multigrid_residual > 9.5e-15) && (status == 0)) {
+        //fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+        //two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+        //two_grid_residual = two_grid_method(n, m, L, ia, ja, a, b, gs_x);
+        //two_grid_residual = factorized_two_grid_method(n, m, L, ia, ja, a, b, gs_x, &ia_coarse, &ja_coarse, &a_coarse,
+        //                                                    &b_coarse, Symbolic, Numeric, Info, Control);
+        status = v_cycle(max_recursion, 1, n, m, L, ia_ptr, ja_ptr, a_ptr,
+                                                            b_ptr[0], gs_x, Numeric);
+        multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &gs_x, &gs_r);
+        counter++;
+        res_vector[counter] = multigrid_residual;
+        //if (counter == 3)
+        //    sleep(50);
+        //printf("GS residual: %.10e\n", two_grid_residual);
+    }
+
+    tc6 = mytimer_cpu(); tw6 = mytimer_wall();
+    printf("\nSolution time, multigrid method (CPU): %5.2f sec",tc6-tc5);
+    printf("\nSolution time, multigrid method (clock): %5.2f sec \n",tw6-tw5);
+    printf("\nSolution time, multigrid method + factorization (CPU): %5.2f sec",tc6-tc1);
+    printf("\nSolution time, multigrid method + factorization (clock): %5.2f sec \n",tw6-tw1);
+    printf("Number of iterations : %d\n", counter);
+
 
     // résoudre et mesurer le temps de solution 
 
@@ -225,9 +259,9 @@ int main(int argc, char *argv[])
     //double *x_coarse = malloc(n_coarse * sizeof(double));
 
     //tc4 = mytimer_cpu(); tw4 = mytimer_wall();
-    
+
     //prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0);
-    
+
     //Numeric = factorize_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse);
     ////generate_coarse_problem(m, ia_coarse, ja_coarse, a_coarse, b_coarse, Numeric);
 
@@ -356,7 +390,7 @@ int main(int argc, char *argv[])
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
     free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
-    free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr); free(Numeric_ptr);
+    //free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr); // causes a double free :(
     //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
     //system("gnuplot -persist \"scripts/heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"scripts/heatmap_two_grid.gnu\"");

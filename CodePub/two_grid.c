@@ -215,7 +215,7 @@ double factorized_two_grid_method(int n, int m, double L, int *ia, int *ja, doub
     //printf("Initial residual is %.10e\n", res_gs);
     fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x); 
     res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    //printf("Pre-smoothing residual is %.10e\n", res_gs);
+    printf("Pre-smoothing residual is %.10e\n", res_gs);
 
     if ((m - 1) % 2 != 0) {
         printf("old_m: %d\n", m);

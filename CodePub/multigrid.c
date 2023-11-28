@@ -1,84 +1,87 @@
 #include <stdio.h>
 #include "projections.h"
 #include "umfpk.h"
-#include "two_grid.h"
+#include "multigrid.h"
 #include "residual.h"
 #include "gs.h"
+#include "projections.h"
+#include "prob.h"
 
-double v_cycle(int max_recursion, int n, int m, double L, int *ia, int *ja, double *a, double *b, double *gs_x) {
+double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
+                             double **a_ptr, double *b, double *gs_x, void *Numeric) {
+
+    // this function is called recursively, c indicates the level of recursion
+    // the first recursion starts at c = 1, and stops at current recursion = max_recursion
+    // the last recursion is the coarsest grid, and the first recursion is the finest grid
+    // uses the factorized coarsest problem matrix to solve the coarsest problem
+    // then uses the solution to the coarse problem to improve the solution to the fine problem
+
+    for (int i = 0; i < n; i++) {
+        //printf("This is ia_ptr[%d][%d] = %d\n", c-1, i, ia_ptr[c-1][i]);
+    }
+
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    double res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    double res_gs; //= residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    fwd_gs(m, L, &n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x); 
+    res_gs = residual(&n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x, &gs_r);
 
-    int i;
-    int q = (m-1) / 11; // nombre de fois que m-1 est multiple de 11
+    printf("Post-smoothing residual: %.10e\n", res_gs);
+
+    // restriction to the coarse grid
     int m_coarse = (m-1)/2 + 1;
     int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
     int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
     int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
             - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
-            - p_coarse; // number of points on the walls 
+            - p_coarse; // number of points on the walls
+            
+    double *restr_r = malloc(n_coarse * sizeof(double));
 
-    fwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
-    res_gs = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    restriction(m_coarse, q_coarse, &n_coarse, &gs_r, &restr_r);
 
-    // check that m-1 is a power of 2
+    double *correction = calloc(1, n_coarse * sizeof(double));
 
-    int m_copy = m-1;
-    for (int i = 0; i < max_recursion; i++) {
-        if (m_copy % 2 != 0) {
-            printf("Error: m must be a power of 2\n");
-            exit(1);
-        } else {
-            m_copy /= 2; // go down a level
+    if (c == max_recursion) { // we are at the coarsest grid, we can solve the problem directly
+        printf("I am solving now, c = %d\n", c);
+        if (solve_umfpack_factorized(n_coarse, ia_ptr[c], ja_ptr[c], a_ptr[c], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
+                                                                                          // which we will use to compute the prolongation and go back to the fine grid  
+            free(correction); // prevents memory leak
+            sleep(1); // debug
+            return 1;
+        }
+    } else {
+        if (v_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
+            free(correction); // prevents memory leak
+            sleep(1); // debug
+            return 1;
         }
     }
-    // restriction to the coarse grid
 
-    double *restr_r = malloc(n_coarse * sizeof(double));
-    restriction(m_coarse, q_coarse, &n_coarse, &gs_r, &restr_r);
-    
-    // solve the coarse problem
-    // generate the coarse matrix
+    double *correction_prol = malloc(n * sizeof(double));
 
-    int *ia_coarse, *ja_coarse; 
-    double *a_coarse, *b_coarse, *r_coarse;
-    if (prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0))
-        return 1;
+    prolongation(m_coarse, q_coarse, &n_coarse, &correction, &correction_prol);
 
-    r_coarse = malloc(n_coarse * sizeof(double));
-
-    if (solve_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse, restr_r, r_coarse)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
-                                                                                      // which we will use to compute the prolongation and go back to the fine grid
-        free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r_coarse); // prevents memory leak
-        return 1;
-    }
-
-    double *r_prol = malloc(n * sizeof(double));
-
-    prolongation(m_coarse, q_coarse, &n_coarse, &r_coarse, &r_prol);
-
-   //construct the x vector from this improvement to the residual
+    //construct the x vector from this improvement to the residual
 
     for (int i = 0; i < n; i++) {
-        gs_x[i] += r_prol[i]; // source of bug ????
+        gs_x[i] += correction_prol[i];
     }
 
-    double res_prolongation = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
+    bwd_gs(m, L, &n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x);
 
-    bwd_gs(m, L, &n, &ia, &ja, &a, &b, &gs_x);
+    double multigrid_residual = residual(&n, &ia_ptr[c-1], &ja_ptr[c-1], &a_ptr[c-1], &b, &gs_x, &gs_r);
 
-    double two_grid_residual = residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r); 
+    printf("Multigrid residual: %.10e\n", multigrid_residual);
 
-    printf("Two-grid residual: %.10e\n", two_grid_residual);
+    free(r); free(gs_r); free(restr_r); free(correction); free(correction_prol);
 
-    free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(r); free(gs_r); free(restr_r); free(r_prol); free(r_coarse);
+    return 0; // success
 
-    return two_grid_residual; // success
 }
 
-int generate_multigrid_problem(int max_recursion, int m_fine, int **ia_ptr, int **ja_ptr, double **a_ptr, 
-                    double **b_ptr, void **Numeric_ptr) 
+void *generate_multigrid_problem(int max_recursion, int m, int **ia_ptr, int **ja_ptr, double **a_ptr, 
+                    double **b_ptr) 
 {
     // this time ia_ptr are an array to pointers to  the ia arrays for each coarse level in the multigrid problem
     // generates the coarse matrices separately from the multigrid method
@@ -87,9 +90,13 @@ int generate_multigrid_problem(int max_recursion, int m_fine, int **ia_ptr, int 
 
     // check that m-1 is a power of 2
 
-    int m_copy = m_fine-1;
+    int m_copy = m-1;
+    void *Numeric; // will be used to store the LU factorization of the coarse matrix
 
     for (int i = 0; i < max_recursion; i++) { // separate loop to avoid doing a lot of work to find out at the end that m is not acceptable
+
+    //printf("hello: %d\n", m_copy);
+
         if (m_copy % 2 != 0) {
             printf("m_copy: %d\n", m_copy);
             printf("Error: m must be a power of 2\n");
@@ -99,29 +106,23 @@ int generate_multigrid_problem(int max_recursion, int m_fine, int **ia_ptr, int 
         }
     }
 
-    for (int i = 0; i < max_recursion; i++) { // iterate over the levels of the multigrid, generate all matrices
-
-        // prepare the arrays for the coarse problem
-        int *ia_coarse = ia_ptr[i];
-        int *ja_coarse = ja_ptr[i];
-        double *a_coarse = a_ptr[i];
-        double *b_coarse = b_ptr[i];
-        void *Numeric = Numeric_ptr[i];
+    for (int i = 0; i <= max_recursion; i++) { // iterate over the levels of the multigrid, generate all matrices
         // prepare the values for the coarse problem
-        int m_coarse = (m_fine-1)/2 + 1;
-        int q_coarse = (m_coarse-1) / 11; // nombre de fois que m-1 est multiple de 11
-        int p_coarse = 4 * m_coarse - 4; // nombre de points sur le périmètre
-        int n_coarse = m_coarse * m_coarse // nombre total de points dans le carré
-                - (5 * q_coarse) * (8 * q_coarse) // nombre de points dans le rectangle supérieur droit
-                - p_coarse; // number of points on the walls 
+        int q = (m-1) / 11; // nombre de fois que m-1 est multiple de 11
+        int p = 4 * m - 4; // nombre de points sur le périmètre
+        int n = m * m // nombre total de points dans le carré
+                - (5 * q) * (8 * q) // nombre de points dans le rectangle supérieur droit
+                - p; // number of points on the walls 
 
-        if (prob(m_coarse, &n_coarse, &ia_coarse, &ja_coarse, &a_coarse, &b_coarse, 0))
+        if (prob(m, &n, &ia_ptr[i], &ja_ptr[i], &a_ptr[i], &b_ptr[i], 0))
             return 1;
+        
+        if (i == max_recursion) // we only need to build the last LU factorization
+            Numeric = factorize_umfpack(n, ia_ptr[i], ja_ptr[i], a_ptr[i]); 
 
-        Numeric = factorize_umfpack(n_coarse, ia_coarse, ja_coarse, a_coarse);
-
-        m_fine = m_coarse; // we go down to the next level
+        m = (m-1)/2 + 1; // go down a level, might be a problem if the lowest level is m = 12
     }
 
-    return 0;
+    return Numeric;
+
 }
