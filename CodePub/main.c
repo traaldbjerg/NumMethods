@@ -11,7 +11,8 @@
 #include "projections.h"
 #include "two_grid.h"
 #include "multigrid.h"
-//#include "umfpack.h
+#include "preconditionner.h"
+#include "cg.h"
 
 // Fonction main
 
@@ -31,16 +32,15 @@ int main(int argc, char *argv[])
     // 8 : 5633
     // 9 : 11265
     // 10 : 22529
-    int m =  5633;
-    //int two_grid_iter = 17;
+    int m =  1409;
     int q = (m-1) / 11;
     int i;
     double L = 5.5;
-    double tc1, tc2, tc3, tc4, tc5, tc6, tw1, tw2, tw3, tw4, tw5, tw6, tc7, tw7, tc8, tw8; // mis à jour le 13/10/22
-    int n, *ia, *ja; 
-    double *a, *b, *x, *gs_x;
-    // multigrid declarations
-    int max_recursion = 8; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
+    double tc1, tc2, tc3, tw1, tw2, tw3; // mis à jour le 13/10/22
+    int n;
+    double *x, *r, *d;
+    double *r_save, *b_r_save; // for the standard CG method
+    int max_recursion = 6; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
                            // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
                            // 2 = ...
     int counter;
@@ -48,11 +48,13 @@ int main(int argc, char *argv[])
     double **a_ptr, **b_ptr;
     void *Numeric;
     double *res_vector;
+
     int p = 4 * m - 4; // nombre de points sur le périmètre
     int nb_dir = p; // nombre de points sur une porte/fenêtre
     n = m * m // nombre total de points dans le carré
         - (5 * q) * (8 * q) // nombre de points dans le rectangle supérieur droit
         - nb_dir; // number of points on the walls
+
     ia_ptr = malloc((max_recursion + 2) * sizeof(int *)); // + 2 because max_recursion = 0 is a 2-grid, and then store all of the next grids
     ja_ptr = malloc((max_recursion + 2) * sizeof(int *));
     a_ptr = malloc((max_recursion + 2) * sizeof(double *));
@@ -70,15 +72,19 @@ int main(int argc, char *argv[])
     // allocate memory for the solution vector 
 
     x = calloc(1, n * sizeof(double));
-    gs_x = calloc(1, n * sizeof(double));
     if ( x == NULL ) {
     printf("\n ERREUR : not enough memory for solution vector\n\n");
         return 1;
     }
 
-    double multigrid_residual = 1.0;
+    r = malloc(n * sizeof(double));
+    d = calloc(1, n * sizeof(double)); // initialised to 0s for the first iteration
+    r_save = calloc(1, n * sizeof(double));
+    b_r_save = calloc(1, n * sizeof(double));
+ 
+    double multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
+    double cg_residual = multigrid_residual;
 
-    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     int status = 0;
     res_vector = malloc(50 * sizeof(double));
     res_vector[0] = multigrid_residual;
@@ -86,35 +92,37 @@ int main(int argc, char *argv[])
     // solve the problem using the multigrid method
 
     counter = 0;
-    tc5 = mytimer_cpu(); tw5 = mytimer_wall();
-    while ((multigrid_residual > 1.35e-14) && (status == 0)) {
-        status = w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr,
-                                                            b_ptr[0], gs_x, Numeric);
-        multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &gs_x, &gs_r);
+    tc2 = mytimer_cpu(); tw2 = mytimer_wall();
+    while ((cg_residual > 1.35e-14) && (status == 0)) {
+        //status = v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
+        //multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r); // use the finest grid to calculate the residual
+        //status = standard_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, r_save, b_r_save, d, Numeric);
+        status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric);
+        cg_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
         counter++;
-        res_vector[counter] = multigrid_residual;
-        printf("Iteration %d, multigrid residual = %.10e\n", counter, multigrid_residual);
+        res_vector[counter] = multigrid_residual; // segfault if the iterative method does not converge fast enough
+        printf("Iteration %d, multigrid residual = %.10e\n", counter, cg_residual);
     }
-
-    tc6 = mytimer_cpu(); tw6 = mytimer_wall();
+ 
+    tc3 = mytimer_cpu(); tw3 = mytimer_wall();
     printf("\n");
 
-    printf("\nSolution time, multigrid method (CPU): %5.2f sec",tc6-tc5);
-    printf("\nSolution time, multigrid method (clock): %5.2f sec \n",tw6-tw5);
-    printf("\nSolution time, multigrid method + factorization (CPU): %5.2f sec",tc6-tc1);
-    printf("\nSolution time, multigrid method + factorization (clock): %5.2f sec \n",tw6-tw1);
+    printf("\nSolution time, multigrid method (CPU): %5.2f sec",tc3-tc2);
+    printf("\nSolution time, multigrid method (clock): %5.2f sec \n",tw3-tw2);
+    printf("\nSolution time, multigrid method + factorization (CPU): %5.2f sec",tc3-tc1);
+    printf("\nSolution time, multigrid method + factorization (clock): %5.2f sec \n",tw3-tw1);
     printf("Number of iterations : %d\n", counter);
 
     // plot the solution of the multigrid method
 
-    FILE *f_out_multi = fopen("mat/out_mutligrid.dat", "w");
+    FILE *f_out_multi = fopen("mat/out_multigrid.dat", "w");
 
     i = 0;
 
     for (int iy = 1; iy < m-1; iy++) { // vertical
         for (int ix = 1; ix < m-1; ix++) { // horizontal
             if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
-                fprintf(f_out_multi, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (gs_x)[i]);
+                fprintf(f_out_multi, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
                 i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
             }
         }
@@ -125,11 +133,13 @@ int main(int argc, char *argv[])
 
     // plot the evolution of the residual norm
 
-    FILE *f_out_multi_res = fopen("mat/out_mutligrid_res.dat", "w");
+    FILE *f_out_multi_res = fopen("mat/out_multigrid_res.dat", "w");
 
     for (int i = 0; i < counter; i++) {
         fprintf(f_out_multi_res, "%d %f\n", i, res_vector[i]);
     }
+
+    fclose(f_out_multi_res);
 
    // RECONSTRUCT PROLONGATION AND RESTRICTION MATRICES IN MATLAB
 
@@ -177,9 +187,9 @@ int main(int argc, char *argv[])
 
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
-    free(ia); free(ja); free(a); free(b); free(x); free(gs_x);
-    //free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr); // causes a double free :(
-    //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(gs_r); // prevents memory leak
+    free(x);
+    free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr); // causes a double free :(
+    //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(r); // prevents memory leak
     //system("gnuplot -persist \"scripts/heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"scripts/heatmap_two_grid.gnu\"");
     //system("gnuplot -persist \"scripts/heatmap_initial_residual.gnu\"");

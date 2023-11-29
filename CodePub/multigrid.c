@@ -4,11 +4,10 @@
 #include "multigrid.h"
 #include "residual.h"
 #include "gs.h"
-#include "projections.h"
 #include "prob.h"
 
 double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
-                             double **a_ptr, double *b, double *gs_x, void *Numeric) {
+                             double **a_ptr, double *b, double *x, void *Numeric) {
 
     // this function is called recursively, c indicates the level of recursion
     // the first recursion starts at c = 0, and stops at current recursion = max_recursion
@@ -17,10 +16,9 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     // then uses the solution to the coarse problem to improve the solution to the fine problem
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    double res_gs; //= residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x); 
-    res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
+    double res_gs; //= residual(&n, &ia, &ja, &a, &b, &x, &r);
+    fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x); 
+    res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x, &r);
 
     //printf("Post-smoothing residual: %.10e\n", res_gs);
 
@@ -34,7 +32,7 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
             
     double *restr_r = malloc(n_coarse * sizeof(double));
 
-    restriction(m_coarse, q_coarse, &n_coarse, &gs_r, &restr_r);
+    restriction(m_coarse, q_coarse, &n_coarse, &r, &restr_r);
 
     double *correction = calloc(1, n_coarse * sizeof(double));
 
@@ -61,16 +59,16 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     //construct the x vector from this improvement to the residual
 
     for (int i = 0; i < n; i++) {
-        gs_x[i] += correction_prol[i];
+        x[i] += correction_prol[i];
     }
 
-    bwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x);
+    bwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x);
 
-    double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
+    //double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x, &r);
 
     //printf("Multigrid residual: %.10e\n", multigrid_residual);
 
-    free(r); free(gs_r); free(restr_r); free(correction); free(correction_prol);
+    free(r); free(restr_r); free(correction); free(correction_prol);
 
     return 0; // success
 
@@ -79,7 +77,7 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
 
 
 double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
-                             double **a_ptr, double *b, double *gs_x, void *Numeric) {
+                             double **a_ptr, double *b, double *x, void *Numeric) {
 
     // this function is called recursively, c indicates the level of recursion
     // the first recursion starts at c = 0, and stops at current recursion = max_recursion - 1
@@ -88,10 +86,9 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     // then uses the solution to the coarse problem to improve the solution to the fine problem
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
-    double res_gs; //= residual(&n, &ia, &ja, &a, &b, &gs_x, &gs_r);
-    fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x); 
-    res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
+    double res_gs; //= residual(&n, &ia, &ja, &a, &b, &x, &r);
+    fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x); 
+    res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x, &r);
 
     //printf("This is starting c: %d\n", c); // check to see if it is actually a w-cycle or not
     //printf("Post-smoothing residual: %.10e\n", res_gs);
@@ -106,7 +103,7 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
             
     double *restr_r = malloc(n_coarse * sizeof(double));
 
-    restriction(m_coarse, q_coarse, &n_coarse, &gs_r, &restr_r);
+    restriction(m_coarse, q_coarse, &n_coarse, &r, &restr_r);
 
     double *correction = calloc(1, n_coarse * sizeof(double));
 
@@ -145,16 +142,16 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     //construct the x vector from this improvement to the residual
 
     for (int i = 0; i < n; i++) {
-        gs_x[i] += correction_prol[i];
+        x[i] += correction_prol[i];
     }
 
-    bwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x);
+    bwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x);
 
-    double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
+    //double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &x, &r);
 
     //printf("Multigrid residual: %.10e\n", multigrid_residual);
 
-    free(r); free(gs_r); free(restr_r); free(correction); free(correction_prol);
+    free(r); free(restr_r); free(correction); free(correction_prol);
 
     //printf("This is final c: %d\n", c); // check to see if it is actually a w-cycle or not
 

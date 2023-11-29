@@ -163,6 +163,7 @@ void* factorize_umfpack(int n, int *ia, int *ja, double *a)
 
 int solve_umfpack_factorized(int n, int *ia, int *ja, double *a, 
                             double *b, double *x, void *Numeric) {
+    // this function issues umfpack warnings because control and info are not initialised at the start
 
     int status;
     /* solution */
