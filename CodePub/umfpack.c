@@ -132,30 +132,30 @@ void* factorize_umfpack(int n, int *ia, int *ja, double *a)
     status = umfpack_di_symbolic (n, n, ia, ja, a, &Symbolic, Control, Info) ;
     if (status < 0)
     {
-	umfpack_di_report_info (Control, Info) ;
-	umfpack_di_report_status (Control, status) ;
+	//umfpack_di_report_info (Control, Info) ;
+	//umfpack_di_report_status (Control, status) ;
         printf("\n ERREUR : umfpack_di_symbolic a échoué\n\n");
         return 1;
     }
 
     /* factorization symbolique - affichage */
 
-    (void) umfpack_di_report_symbolic (Symbolic, Control) ;
+    //(void) umfpack_di_report_symbolic (Symbolic, Control) ;
 
     /* factorization numérique */
 
     status = umfpack_di_numeric (ia, ja, a, Symbolic, &Numeric, Control, Info);
     if (status < 0)
     {
-	umfpack_di_report_info (Control, Info) ;
-	umfpack_di_report_status (Control, status) ;
+	//umfpack_di_report_info (Control, Info) ;
+	//umfpack_di_report_status (Control, status) ;
         printf("\n ERREUR : umfpack_di_numeric a échoué\n\n");
         return 1;
     }
 
     /* factorization numérique - affichage */
 
-    (void) umfpack_di_report_numeric (Numeric, Control) ;
+    //(void) umfpack_di_report_numeric (Numeric, Control) ;
 
     return Numeric;
 }
@@ -170,8 +170,8 @@ int solve_umfpack_factorized(int n, int *ia, int *ja, double *a,
     /* status = umfpack_di_solve (UMFPACK_A, ia, ja, a, x, b, Numeric, Control, Info) ;*/
     status = umfpack_di_solve (UMFPACK_At, ia, ja, a, x, b, Numeric, Control, Info) ;
     /* UMFPACK utilise CSC et pas CSR =>  */
-    umfpack_di_report_info (Control, Info) ;
-    umfpack_di_report_status (Control, status) ;
+    //umfpack_di_report_info (Control, Info) ;
+    //umfpack_di_report_status (Control, status) ;
     if (status < 0){
 	printf("\n ERREUR : umfpack_di_solve a échoué\n\n");
         return 1;

@@ -17,7 +17,6 @@
 
 int main(int argc, char *argv[])
 {
-    
     // déclarer les variables 
 
     // possible m values for multigrid :
@@ -32,7 +31,7 @@ int main(int argc, char *argv[])
     // 8 : 5633
     // 9 : 11265
     // 10 : 22529
-    int m =  2817;
+    int m =  5633;
     //int two_grid_iter = 17;
     int q = (m-1) / 11;
     int i;
@@ -41,7 +40,7 @@ int main(int argc, char *argv[])
     int n, *ia, *ja; 
     double *a, *b, *x, *gs_x;
     // multigrid declarations
-    int max_recursion = 7; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
+    int max_recursion = 8; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
                            // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
                            // 2 = ...
     int counter;

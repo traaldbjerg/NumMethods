@@ -11,14 +11,10 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
                              double **a_ptr, double *b, double *gs_x, void *Numeric) {
 
     // this function is called recursively, c indicates the level of recursion
-    // the first recursion starts at c = 1, and stops at current recursion = max_recursion
+    // the first recursion starts at c = 0, and stops at current recursion = max_recursion
     // the last recursion is the coarsest grid, and the first recursion is the finest grid
     // uses the factorized coarsest problem matrix to solve the coarsest problem
     // then uses the solution to the coarse problem to improve the solution to the fine problem
-
-    for (int i = 0; i < n; i++) {
-        //printf("This is ia_ptr[%d][%d] = %d\n", c-1, i, ia_ptr[c-1][i]);
-    }
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
@@ -26,7 +22,7 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x); 
     res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
 
-    printf("Post-smoothing residual: %.10e\n", res_gs);
+    //printf("Post-smoothing residual: %.10e\n", res_gs);
 
     // restriction to the coarse grid
     int m_coarse = (m-1)/2 + 1;
@@ -72,7 +68,7 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
 
     double multigrid_residual = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
 
-    printf("Multigrid residual: %.10e\n", multigrid_residual);
+    //printf("Multigrid residual: %.10e\n", multigrid_residual);
 
     free(r); free(gs_r); free(restr_r); free(correction); free(correction_prol);
 
@@ -86,14 +82,10 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
                              double **a_ptr, double *b, double *gs_x, void *Numeric) {
 
     // this function is called recursively, c indicates the level of recursion
-    // the first recursion starts at c = 1, and stops at current recursion = max_recursion
+    // the first recursion starts at c = 0, and stops at current recursion = max_recursion - 1
     // the last recursion is the coarsest grid, and the first recursion is the finest grid
     // uses the factorized coarsest problem matrix to solve the coarsest problem
     // then uses the solution to the coarse problem to improve the solution to the fine problem
-
-    for (int i = 0; i < n; i++) {
-        //printf("This is ia_ptr[%d][%d] = %d\n", c-1, i, ia_ptr[c-1][i]);
-    }
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double *gs_r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
@@ -101,7 +93,7 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     fwd_gs(m, L, &n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x); 
     res_gs = residual(&n, &ia_ptr[c], &ja_ptr[c], &a_ptr[c], &b, &gs_x, &gs_r);
 
-    printf("This is c: %d\n", c); // check to see if it is actually a w-cycle or not
+    //printf("This is starting c: %d\n", c); // check to see if it is actually a w-cycle or not
     //printf("Post-smoothing residual: %.10e\n", res_gs);
 
     // restriction to the coarse grid
@@ -118,8 +110,10 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
 
     double *correction = calloc(1, n_coarse * sizeof(double));
 
+    //printf("This is restricted c: %d\n", c); // check to see if it is actually a w-cycle or not
+
     if (c == max_recursion) { // we are at the coarsest grid, we can solve the problem directly
-        //printf("I am solving now, c = %d\n", c); //debug
+        //printf("This is solved c = %d\n", c + 1); // debug, +1 so that the output is less confusing
         if (solve_umfpack_factorized(n_coarse, ia_ptr[c+1], ja_ptr[c+1], a_ptr[c+1], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
                                                                                           // which we will use to compute the prolongation and go back to the fine grid  
             free(correction); // prevents memory leak
@@ -132,19 +126,21 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
             sleep(1); // debug
             return 1;
         }
-        printf("This is intermediary c = %d\n", c); // check to see if it is actually a w-cycle or not
-        if (c != 0) {
-            if (w_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
-                free(correction); // prevents memory leak
-                sleep(1); // debug
-                return 1;
-            }
+        //printf("This is intermediary c = %d\n", c); // check to see if it is actually a w-cycle or not
+                                                      // the output of this one is a bit confusing however, because it goes up to +1
+                                                      // but nothing happens at that level
+        if (w_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
+            free(correction); // prevents memory leak
+            sleep(1); // debug
+            return 1;
         }
     }
 
     double *correction_prol = malloc(n * sizeof(double));
 
     prolongation(m_coarse, q_coarse, &n_coarse, &correction, &correction_prol);
+
+    //printf("This is prolonged c: %d\n", c); // check to see if it is actually a w-cycle or not
 
     //construct the x vector from this improvement to the residual
 
@@ -160,7 +156,7 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
 
     free(r); free(gs_r); free(restr_r); free(correction); free(correction_prol);
 
-    printf("This is final c: %d\n", c); // check to see if it is actually a w-cycle or not
+    //printf("This is final c: %d\n", c); // check to see if it is actually a w-cycle or not
 
     return 0; // success
 
