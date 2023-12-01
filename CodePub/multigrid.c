@@ -41,13 +41,13 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
         if (solve_umfpack_factorized(n_coarse, ia_ptr[c+1], ja_ptr[c+1], a_ptr[c+1], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
                                                                                           // which we will use to compute the prolongation and go back to the fine grid  
             free(correction); // prevents memory leak
-            sleep(1); // debug
+            //sleep(1); // debug
             return 1;
         }
     } else { // go to the coarser level
         if (v_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
             free(correction); // prevents memory leak
-            sleep(1); // debug
+            //sleep(1); // debug
             return 1;
         }
     }
@@ -114,13 +114,13 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
         if (solve_umfpack_factorized(n_coarse, ia_ptr[c+1], ja_ptr[c+1], a_ptr[c+1], restr_r, correction, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
                                                                                           // which we will use to compute the prolongation and go back to the fine grid  
             free(correction); // prevents memory leak
-            sleep(1); // debug
+            //sleep(1); // debug
             return 1;
         }
     } else { // go to the coarser level BUT DO IT TWICE FOR THE W CYCLE
         if (w_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
             free(correction); // prevents memory leak
-            sleep(1); // debug
+            //sleep(1); // debug
             return 1;
         }
         //printf("This is intermediary c = %d\n", c); // check to see if it is actually a w-cycle or not
@@ -128,7 +128,7 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
                                                       // but nothing happens at that level
         if (w_cycle(max_recursion, c + 1, n_coarse, m_coarse, L, ia_ptr, ja_ptr, a_ptr, restr_r, correction, Numeric)) {
             free(correction); // prevents memory leak
-            sleep(1); // debug
+            //sleep(1); // debug
             return 1;
         }
     }

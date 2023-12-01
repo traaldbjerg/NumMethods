@@ -11,7 +11,6 @@
 #include "projections.h"
 #include "two_grid.h"
 #include "multigrid.h"
-#include "preconditionner.h"
 #include "cg.h"
 
 // Fonction main
@@ -32,15 +31,15 @@ int main(int argc, char *argv[])
     // 8 : 5633
     // 9 : 11265
     // 10 : 22529
-    int m =  1409;
+    int m =  705;
     int q = (m-1) / 11;
     int i;
     double L = 5.5;
     double tc1, tc2, tc3, tw1, tw2, tw3; // mis à jour le 13/10/22
     int n;
     double *x, *r, *d;
-    double *r_save, *b_r_save; // for the standard CG method
-    int max_recursion = 6; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
+    double *r_B_r_save; // for the standard CG method
+    int max_recursion = 5; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
                            // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
                            // 2 = ...
     int counter;
@@ -79,8 +78,9 @@ int main(int argc, char *argv[])
 
     r = malloc(n * sizeof(double));
     d = calloc(1, n * sizeof(double)); // initialised to 0s for the first iteration
-    r_save = calloc(1, n * sizeof(double));
-    b_r_save = calloc(1, n * sizeof(double));
+    r_B_r_save = malloc(1 * sizeof(double));
+    *r_B_r_save = 0.0; // for the standard CG method
+
  
     double multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
     double cg_residual = multigrid_residual;
@@ -93,10 +93,12 @@ int main(int argc, char *argv[])
 
     counter = 0;
     tc2 = mytimer_cpu(); tw2 = mytimer_wall();
-    while ((cg_residual > 1.35e-14) && (status == 0)) {
+    while ((cg_residual > 1.35e-14) && (status == 0) 
+    //&& (counter < 2)
+    ) {
         //status = v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
         //multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r); // use the finest grid to calculate the residual
-        //status = standard_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, r_save, b_r_save, d, Numeric);
+        //status = standard_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, r_B_r_save, d, Numeric);
         status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric);
         cg_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
         counter++;
