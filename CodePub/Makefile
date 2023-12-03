@@ -35,7 +35,7 @@ clean:
 	rm *.o 
 	rm main
 
-main: main.c prob.o time.o  umfpack.o residual.o rho.o heatflux.o gs.o projections.o two_grid.o multigrid.o preconditionner.o cg.o matrix.o
+main: main.c prob.o time.o  umfpack.o residual.o gs.o projections.o two_grid.o multigrid.o preconditionner.o cg.o matrix.o
 	cc -g $(COPT) $^ -o $@ $(LIB1) $(LIB2) -ISuiteSpare/UMFPACK/Include \
   -ISuiteSparse/SuiteSparse_config  -ISuiteSparse/AMD/Include
 

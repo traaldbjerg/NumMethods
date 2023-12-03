@@ -5,11 +5,13 @@
 #include "residual.h"
 
 int flexible_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **ja_ptr,
-                             double **a_ptr, double *b, double *x, double *r, double *d, void *Numeric) {
+                             double **a_ptr, double *b, double *x, double *r, double *d, void *Numeric, int v_w) {
 
     // conjugate gradient method, flexible version
     // construct B^-1 r_m, where B is the preconditionner
     // preconditionner is a multigrid method
+    // v_w = 0 for v-cycle, v_w = 1 for w-cycle
+
     (void) residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b, &x, &r); // use the finest grid to calculate the residual
     double *B_r = calloc(1, n * sizeof(double));
 
@@ -17,7 +19,14 @@ int flexible_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
     //    B_r[i] = r[i];
     //}
 
-    v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, r, B_r, Numeric); // makes B_r = B^-1 r_m
+    if (v_w == 0) {
+        v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, r, B_r, Numeric); // makes B_r = B^-1 r_m
+    } else if (v_w == 1) {
+        w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, r, B_r, Numeric); // makes B_r = B^-1 r_m
+    } else {
+        printf("Error: v_w must be 0 or 1\n");
+        return 1;
+    }
     double *A_B_r = malloc(n * sizeof(double));
 
     //for (int i = 0; i < n; i++) {
@@ -46,7 +55,7 @@ int flexible_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
         //printf("dot_product(n, d, a_d) = %f\n", dot_product(n, d, A_d));
         beta = - dot_product(n, d, A_B_r) / dot_product(n, d, A_d); // makes beta = d^T * a_B_r / d^T * a_d
     }
-    printf("beta = %f\n", beta);
+    //printf("beta = %f\n", beta);
     double *beta_d = malloc(n * sizeof(double));
     scalar_product(n, beta, d, beta_d); // makes beta_d = beta * d
 
@@ -64,7 +73,7 @@ int flexible_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
     
     double alpha = dot_product(n, d, r) / dot_product(n, d, A_d); // makes alpha = d^T * a_B_r / d^T * d
 
-    printf("alpha = %f\n", alpha);
+    //printf("alpha = %f\n", alpha);
 
     double *alpha_d = malloc(n * sizeof(double));
     scalar_product(n, alpha, d, alpha_d); // makes alpha_d = alpha * d
@@ -98,7 +107,7 @@ int standard_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
     double *B_r = calloc(1, n * sizeof(double));
     v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, r, B_r, Numeric); // makes B_r = B^-1 r_m
 
-    printf("r_B_r_save = %f\n", *r_B_r_save);
+    //printf("r_B_r_save = %f\n", *r_B_r_save);
 
     //for (int i = 0; i < n; i++) {
         //printf("B_r[%d] = %f\n", i, B_r[i]);
@@ -117,9 +126,9 @@ int standard_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
         beta = r_B_r / *r_B_r_save; // makes beta = r * B^-1 r / r_m-1 * B^-1 r_m-1
     }
 
-    printf("r_B_r = %f\n", r_B_r);
+    //printf("r_B_r = %f\n", r_B_r);
 
-    printf("beta = %f\n", beta);
+    //printf("beta = %f\n", beta);
 
     double *beta_d = malloc(n * sizeof(double));
     scalar_product(n, beta, d, beta_d); // makes beta_d = beta * d
@@ -128,7 +137,7 @@ int standard_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
     CSR_matrix_multiplication(n, ia_ptr[0], ja_ptr[0], a_ptr[0], d, A_d);
     double alpha = dot_product(n, r, B_r) / dot_product(n, d, A_d); // makes alpha = d^T * a_B_r / d^T * d
 
-    printf("alpha = %f\n", alpha);
+    //printf("alpha = %f\n", alpha);
 
     double *alpha_d = malloc(n * sizeof(double));
     scalar_product(n, alpha, d, alpha_d); // makes alpha_d = alpha * d

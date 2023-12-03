@@ -5,8 +5,6 @@
 #include "umfpk.h"
 #include "time.h"
 #include "residual.h"
-#include "rho.h"
-#include "heatflux.h"
 #include "gs.h"
 #include "projections.h"
 #include "two_grid.h"
@@ -31,7 +29,7 @@ int main(int argc, char *argv[])
     // 8 : 5633
     // 9 : 11265
     // 10 : 22529
-    int m =  705;
+    int m =  2817;
     int q = (m-1) / 11;
     int i;
     double L = 5.5;
@@ -39,9 +37,11 @@ int main(int argc, char *argv[])
     int n;
     double *x, *r, *d;
     double *r_B_r_save; // for the standard CG method
-    int max_recursion = 5; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
+    int max_recursion = 7; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
                            // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
                            // 2 = ...
+    double tolerance = 4.4e-15;
+    int v_w = 0; // 0 for v-cycle, 1 for w-cycle in the flexible CG method
     int counter;
     int **ia_ptr, **ja_ptr;
     double **a_ptr, **b_ptr;
@@ -81,31 +81,30 @@ int main(int argc, char *argv[])
     r_B_r_save = malloc(1 * sizeof(double));
     *r_B_r_save = 0.0; // for the standard CG method
 
- 
-    double multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
-    double cg_residual = multigrid_residual;
+
+    double solution_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
 
     int status = 0;
     res_vector = malloc(50 * sizeof(double));
-    res_vector[0] = multigrid_residual;
+    res_vector[0] = solution_residual;
 
     // solve the problem using the multigrid method
 
     counter = 0;
     tc2 = mytimer_cpu(); tw2 = mytimer_wall();
-    while ((cg_residual > 1.35e-14) && (status == 0) 
-    //&& (counter < 2)
+    while ((solution_residual > tolerance) && (status == 0) 
+    //|| (counter < 27) // debugging
     ) {
+        //status = two_grid_method(n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
         //status = v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
-        //multigrid_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r); // use the finest grid to calculate the residual
-        //status = standard_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, r_B_r_save, d, Numeric);
-        status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric);
-        cg_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
+        //status = w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
+        status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric, v_w);
+        solution_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
         counter++;
-        res_vector[counter] = multigrid_residual; // segfault if the iterative method does not converge fast enough
-        printf("Iteration %d, multigrid residual = %.10e\n", counter, cg_residual);
+        res_vector[counter] = solution_residual; // segfault if the iterative method does not converge fast enough
+        printf("Iteration %d, multigrid residual = %.10e\n", counter, solution_residual);
     }
- 
+
     tc3 = mytimer_cpu(); tw3 = mytimer_wall();
     printf("\n");
 
@@ -135,13 +134,13 @@ int main(int argc, char *argv[])
 
     // plot the evolution of the residual norm
 
-    FILE *f_out_multi_res = fopen("mat/out_multigrid_res.dat", "w");
+    FILE *f_out_res = fopen("mat/residual_evolution.dat", "w");
 
     for (int i = 0; i < counter; i++) {
-        fprintf(f_out_multi_res, "%d %f\n", i, res_vector[i]);
+        fprintf(f_out_res, "%d %.10e\n", i, res_vector[i]);
     }
 
-    fclose(f_out_multi_res);
+    fclose(f_out_res);
 
    // RECONSTRUCT PROLONGATION AND RESTRICTION MATRICES IN MATLAB
 
@@ -190,7 +189,7 @@ int main(int argc, char *argv[])
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
     free(x);
-    free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr); // causes a double free :(
+    free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr);
     //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(r); // prevents memory leak
     //system("gnuplot -persist \"scripts/heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"scripts/heatmap_two_grid.gnu\"");
@@ -198,7 +197,9 @@ int main(int argc, char *argv[])
     //system("gnuplot -persist \"scripts/heatmap_residual.gnu\""); // laisser gnuplot afficher la température de la pièce
     //system("gnuplot -persist \"scripts/heatmap_restriction.gnu\"");
     //system("gnuplot -persist \"scripts/heatmap_prolongation.gnu\"");
-    //system("gnuplot -persist \"scripts/two_grid_residual_plot.gnu\"");
+    //system("gnuplot -persist \"scripts/residual_plot.gnu\"");
+    //system("gnuplot -persist \"scripts/heatmap_multigrid.gnu\"");
 
     return 0;
+
 }
