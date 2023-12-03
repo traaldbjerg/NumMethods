@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     // 8 : 5633
     // 9 : 11265
     // 10 : 22529
-    int m =  2817;
+    int m =  1409;
     int q = (m-1) / 11;
     int i;
     double L = 5.5;
@@ -37,10 +37,10 @@ int main(int argc, char *argv[])
     int n;
     double *x, *r, *d;
     double *r_B_r_save; // for the standard CG method
-    int max_recursion = 7; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
+    int max_recursion = 6; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
                            // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
                            // 2 = ...
-    double tolerance = 4.4e-15;
+    double tolerance = 9.5e-15;
     int v_w = 0; // 0 for v-cycle, 1 for w-cycle in the flexible CG method
     int counter;
     int **ia_ptr, **ja_ptr;
@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
     ) {
         //status = two_grid_method(n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
         //status = v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
-        //status = w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
-        status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric, v_w);
+        status = w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
+        //status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric, v_w);
         solution_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
         counter++;
         res_vector[counter] = solution_residual; // segfault if the iterative method does not converge fast enough

@@ -1,1 +1,0 @@
-double rho(double x, double y, double source_value);

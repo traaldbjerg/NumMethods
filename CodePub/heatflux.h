@@ -1,1 +1,0 @@
-void compute_heat_flux(int m, int q, double **x, double source, double *sum_grad_x, double *sum_grad_y, double *rad_power, double (*source_func)(double, double, double));
