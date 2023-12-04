@@ -9,6 +9,12 @@ int two_grid_method(int n, int m, double L, int **ia_ptr, int **ja_ptr, double *
     // uses the factorized coarse matrix to solve the coarse problem
     // then uses the solution to the coarse problem to improve the solution to the fine problem
     // this is the two-grid method with factorized coarse matrix
+    // ia_ptr[0], ja_ptr[0], a_ptr[0] are the fine grid matrices
+    // ia_ptr[1], ja_ptr[1], a_ptr[1] are the coarse grid matrices
+    // b is the rhs vector
+    // x is the solution vector
+    // Numeric is the pointer to the umfpack factorization of the coarse grid matrix
+
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     //printf("Initial residual is %.10e\n", res_gs);
     fwd_gs(m, L, &n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b, &x); 
@@ -69,6 +75,13 @@ int generate_two_grid_problem(int m_fine, int **ia_ptr, int **ja_ptr, double **a
     // generates the coarse matrices separately from the two-grid method
     // uses factorize umfpack to store the LU factorization of the coarse matrix in the corresponding pointers in this function's arguments
     // this way umfpack doesn't have to do as much heavy lifting for no purpose
+    // this function is not really used as the multigrid version can do the same thing in a more general way
+    // ia_ptr[0], ja_ptr[0], a_ptr[0] are the fine grid matrices
+    // ia_ptr[1], ja_ptr[1], a_ptr[1] are the coarse grid matrices
+    // b_ptr[0] is the fine grid rhs
+    // b_ptr[1] is the coarse grid rhs (not used)
+    // Numeric is the pointer to the umfpack factorization of the fine grid matrix
+
     int m, n, p, q;
 
     for (int i = 0; i < 2; i++) {

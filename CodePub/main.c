@@ -29,30 +29,52 @@ int main(int argc, char *argv[])
     // 8 : 5633
     // 9 : 11265
     // 10 : 22529
-    int m =  1409;
-    int q = (m-1) / 11;
+    int m =  2817;
+    int max_recursion = 7; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
+                           // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
+                           // 2 = ...
+                           // SET THIS TO 0 IF YOU WANT TO CONSTRUCT THE MATRICES FOR THE TWO-GRID METHOD
+    int problem_size_iteration = 0; // if we want to iterate over every problem size, useful to plot the time evolution
+                                    // set this to max_recursion if you want to solve all the problems, ranging from lowest to biggest
+    double tolerance = 1.35e-14;
+    int v_w = 1; // 0 for v-cycle, 1 for w-cycle in the flexible CG method
+    int write_solution = 0; // 0 to not write the solution to a file, 1 to write the solution to a file
+    int visualize_solution = 0; // 1 to show the plots at the end of the program, 0 to not show the plots
+                                // write_solution needs to be set to 1 for this to work (otherwise older data would be plotted)
     int i;
+    int q = (m-1) / 11;
     double L = 5.5;
-    double tc1, tc2, tc3, tw1, tw2, tw3; // mis à jour le 13/10/22
+    double tc1, tc2, tc3, tw1, tw2, tw3;
     int n;
     double *x, *r, *d;
     double *r_B_r_save; // for the standard CG method
-    int max_recursion = 6; // 0 = 2-grid because no recursion happens, we solve directly at the first coarse level
-                           // 1 = smooth, restrict, smooth, restrict, solve, prolong, smooth, prolong, smooth
-                           // 2 = ...
-    double tolerance = 9.5e-15;
-    int v_w = 0; // 0 for v-cycle, 1 for w-cycle in the flexible CG method
     int counter;
     int **ia_ptr, **ja_ptr;
     double **a_ptr, **b_ptr;
     void *Numeric;
     double *res_vector;
+    double *time_vector;
+    int *n_vector;
 
     int p = 4 * m - 4; // nombre de points sur le périmètre
-    int nb_dir = p; // nombre de points sur une porte/fenêtre
     n = m * m // nombre total de points dans le carré
         - (5 * q) * (8 * q) // nombre de points dans le rectangle supérieur droit
-        - nb_dir; // number of points on the walls
+        - p; // number of points on the walls
+
+    time_vector = malloc((max_recursion + 1) * sizeof(double));
+    n_vector = malloc((max_recursion + 1) * sizeof(int));
+
+    if (problem_size_iteration != 0) {
+        m = 23;
+        q = (m-1) / 11;
+        p = 4 * m - 4; // nombre de points sur le périmètre
+        n = m * m // nombre total de points dans le carré
+            - (5 * q) * (8 * q) // nombre de points dans le rectangle supérieur droit
+            - p; // number of points on the walls
+        max_recursion = 0;
+    }
+
+    for (int i = 0; i <= problem_size_iteration; i++) { 
 
     ia_ptr = malloc((max_recursion + 2) * sizeof(int *)); // + 2 because max_recursion = 0 is a 2-grid, and then store all of the next grids
     ja_ptr = malloc((max_recursion + 2) * sizeof(int *));
@@ -61,7 +83,7 @@ int main(int argc, char *argv[])
 
     tc1 = mytimer_cpu(); tw1 = mytimer_wall(); // mis à jour le 13/10/22
 
-    Numeric = generate_multigrid_problem(max_recursion, m, ia_ptr, ja_ptr, a_ptr, b_ptr);
+    Numeric = generate_multigrid_problem(max_recursion, m, ia_ptr, ja_ptr, a_ptr, b_ptr); // set max_recursion to 0 and this will construct the matrices for the 2-grid problem
 
     printf("\nPROBLEM: ");
     printf("m = %5d   n = %8d\n", m, n);
@@ -83,9 +105,11 @@ int main(int argc, char *argv[])
 
 
     double solution_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
+    solution_residual = residual_norm(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x);
+    //printf("solution_residual = %f\n", solution_residual);
 
     int status = 0;
-    res_vector = malloc(50 * sizeof(double));
+    res_vector = malloc(5000 * sizeof(double));
     res_vector[0] = solution_residual;
 
     // solve the problem using the multigrid method
@@ -97,11 +121,13 @@ int main(int argc, char *argv[])
     ) {
         //status = two_grid_method(n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
         //status = v_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
-        status = w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
-        //status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric, v_w);
-        solution_residual = residual(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x, &r);
+        //status = w_cycle(max_recursion, 0, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, Numeric);
+        status = flexible_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, d, Numeric, v_w);
+        //printf("r_B_r_save OUTSIDE = %f\n", *r_B_r_save); // debug
+        //status = standard_cg(max_recursion, n, m, L, ia_ptr, ja_ptr, a_ptr, b_ptr[0], x, r, r_B_r_save, d, Numeric); // DOES NOT WORK
+        solution_residual = residual_norm(&n, &ia_ptr[0], &ja_ptr[0], &a_ptr[0], &b_ptr[0], &x);
         counter++;
-        res_vector[counter] = solution_residual; // segfault if the iterative method does not converge fast enough
+        res_vector[counter] = solution_residual; // segfault if more iterations than sizeof(res_vector)/sizeof(double)
         printf("Iteration %d, multigrid residual = %.10e\n", counter, solution_residual);
     }
 
@@ -114,35 +140,66 @@ int main(int argc, char *argv[])
     printf("\nSolution time, multigrid method + factorization (clock): %5.2f sec \n",tw3-tw1);
     printf("Number of iterations : %d\n", counter);
 
+    time_vector[i] = tc3 - tc1;
+    n_vector[i] = n;
+
+    //printf("time_vector[%d] = %f\n", i, time_vector[i]);
+    //printf("n_vector[%d] = %d\n", i, n_vector[i]);
+    if (problem_size_iteration != 0) {
+        m = 2 * m - 1;
+        q = (m-1) / 11;
+        p = 4 * m - 4;
+        n = m * m
+            - (5 * q) * (8 * q)
+            - p;
+        max_recursion++;
+    }
+
+    }
+
     // plot the solution of the multigrid method
 
-    FILE *f_out_multi = fopen("mat/out_multigrid.dat", "w");
+    if (write_solution == 1) {
+    
+        FILE *f_out_multi = fopen("mat/out_multigrid.dat", "w");
 
-    i = 0;
+        i = 0;
 
-    for (int iy = 1; iy < m-1; iy++) { // vertical
-        for (int ix = 1; ix < m-1; ix++) { // horizontal
-            if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
-                fprintf(f_out_multi, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
-                i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
+        for (int iy = 1; iy < m-1; iy++) { // vertical
+            for (int ix = 1; ix < m-1; ix++) { // horizontal
+                if ((iy < 6 * q || ix < 3 * q)) { // si on n'est pas dans le rectangle supérieur droit
+                    fprintf(f_out_multi, "%f %f %f\n", iy * L / (q * 11), ix * L / (q * 11), (x)[i]);
+                    i++; // cycler à travers les éléments de x dans le même ordre qu'ils y ont été placés dans prob.c
+                }
             }
+            fprintf(f_out_multi, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
         }
-        fprintf(f_out_multi, "\n"); // requis par la syntaxe de gnuplot, ligne supplémentaire entre chaque changement de valeur de la 1e colonne (iy dans ce cas-ci)
+
+        fclose(f_out_multi);
+
+        // plot the evolution of the residual norm
+
+        FILE *f_out_res = fopen("mat/residual_evolution.dat", "w");
+
+        for (int i = 0; i < counter; i++) {
+            fprintf(f_out_res, "%d %.10e\n", i, res_vector[i]);
+        }
+
+        fclose(f_out_res);
+
+        FILE *f_out_time = fopen("mat/time_evolution.dat", "w");
+
+        for (int i = 0; i <= problem_size_iteration; i++) {
+            //printf("n_vector[%d] = %d\n", i, n_vector[i]);
+            //printf("time_vector[%d] = %f\n", i, time_vector[i]);
+            fprintf(f_out_time, "%d %f\n", n_vector[i], time_vector[i]);
+        }
+
+        fclose(f_out_time);
+
     }
 
-    fclose(f_out_multi);
-
-    // plot the evolution of the residual norm
-
-    FILE *f_out_res = fopen("mat/residual_evolution.dat", "w");
-
-    for (int i = 0; i < counter; i++) {
-        fprintf(f_out_res, "%d %.10e\n", i, res_vector[i]);
-    }
-
-    fclose(f_out_res);
-
-   // RECONSTRUCT PROLONGATION AND RESTRICTION MATRICES IN MATLAB
+   // RECONSTRUCT PROLONGATION AND RESTRICTION MATRICES FOR MATLAB
 
     //FILE *f_r_iaa = fopen("misc/r_iaa.txt", "w");
     //FILE *f_r_ja = fopen("misc/r_ja.txt", "w");
@@ -188,7 +245,12 @@ int main(int argc, char *argv[])
 
     //fclose(f_r_iaa); fclose(f_r_ja); fclose(f_r_a); fclose(f_p_iaa); fclose(f_p_ja); fclose(f_p_a);
 
-    free(x);
+
+    for (int i = 0; i <= max_recursion; i++) {
+        free(ia_ptr[i]); free(ja_ptr[i]); free(a_ptr[i]); free(b_ptr[i]);
+    }
+
+    free(x); free(r); free(d); free(r_B_r_save); free(res_vector); free(time_vector); free(n_vector);
     free(ia_ptr); free(ja_ptr); free(a_ptr); free(b_ptr);
     //free(ia_coarse); free(ja_coarse); free(a_coarse); free(b_coarse); free(res_vector); //free(x_coarse); free(r_coarse); free(r); // prevents memory leak
     //system("gnuplot -persist \"scripts/heatmap.gnu\""); // laisser gnuplot afficher la température de la pièce
@@ -198,7 +260,10 @@ int main(int argc, char *argv[])
     //system("gnuplot -persist \"scripts/heatmap_restriction.gnu\"");
     //system("gnuplot -persist \"scripts/heatmap_prolongation.gnu\"");
     //system("gnuplot -persist \"scripts/residual_plot.gnu\"");
-    //system("gnuplot -persist \"scripts/heatmap_multigrid.gnu\"");
+    if (visualize_solution == 1 && write_solution == 1) {
+        system("gnuplot -persist \"scripts/heatmap_multigrid.gnu\"");
+        system("gnuplot -persist \"scripts/residual_evolution.gnu\"");
+    }
 
     return 0;
 

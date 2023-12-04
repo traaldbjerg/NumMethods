@@ -5,7 +5,7 @@ z_min = STATS_min
 z_max = STATS_max
 
 set pm3d
-set title "Temperature distribution (°C), multigrid method"
+set title "Temperature distribution (°C), solution by flexible PCG with W-cycle preconditioner"
 set xlabel "x (m)"
 set ylabel "y (m)"
 set zlabel "T (°C)"

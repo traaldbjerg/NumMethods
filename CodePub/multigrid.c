@@ -6,7 +6,7 @@
 #include "gs.h"
 #include "prob.h"
 
-double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
+int v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
                              double **a_ptr, double *b, double *x, void *Numeric) {
 
     // this function is called recursively, c indicates the level of recursion
@@ -14,6 +14,14 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     // the last recursion is the coarsest grid, and the first recursion is the finest grid
     // uses the factorized coarsest problem matrix to solve the coarsest problem
     // then uses the solution to the coarse problem to improve the solution to the fine problem
+
+    // x is the solution vector
+    // b is the right hand side
+    // ia, ja, a are the CSR matrix
+    // n is the number of rows (or columns) of the matrix
+    // Numeric is the pointer to the umfpack factorization of the coarse grid matrix
+    // max_recursion is the level of recursions to do
+    // c is the current recursion level
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double res_gs; //= residual(&n, &ia, &ja, &a, &b, &x, &r);
@@ -76,7 +84,7 @@ double v_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
 
 
 
-double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
+int w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, int **ja_ptr,
                              double **a_ptr, double *b, double *x, void *Numeric) {
 
     // this function is called recursively, c indicates the level of recursion
@@ -84,6 +92,14 @@ double w_cycle(int max_recursion, int c, int n, int m, double L, int **ia_ptr, i
     // the last recursion is the coarsest grid, and the first recursion is the finest grid
     // uses the factorized coarsest problem matrix to solve the coarsest problem
     // then uses the solution to the coarse problem to improve the solution to the fine problem
+
+    // x is the solution vector
+    // b is the right hand side
+    // ia, ja, a are the CSR matrix
+    // n is the number of rows (or columns) of the matrix
+    // Numeric is the pointer to the umfpack factorization of the coarse grid matrix
+    // max_recursion is the level of recursions to do
+    // c is the current recursion level
 
     double *r = malloc(n * sizeof(double)); // A * x pour pouvoir facilement faire A * x - b par la suite
     double res_gs; //= residual(&n, &ia, &ja, &a, &b, &x, &r);
@@ -168,6 +184,16 @@ void *generate_multigrid_problem(int max_recursion, int m, int **ia_ptr, int **j
     // generates the coarse matrices separately from the multigrid method
     // uses factorize umfpack to store the LU factorization of the coarse matrix in the corresponding pointers in this function's arguments
     // this way umfpack doesn't have to do as much heavy lifting for no purpose
+
+    // ia_ptr[0], ja_ptr[0], a_ptr[0] are the fine grid matrices
+    // ia_ptr[1], ja_ptr[1], a_ptr[1] are the coarse grid matrices
+    // ia_ptr[2], ja_ptr[2], a_ptr[2] are the next level coarse grid matrices
+    // etc...
+    // b_ptr[0] is the fine grid rhs
+    // b_ptr[1] is the coarse grid rhs (not used)
+    // b_ptr[2] is the next level coarse grid rhs (not used)
+    // etc...
+    // max_recursion is the level of recursions to do, indicating how many coarse levels there are
 
     // check that m-1 is a power of 2
 
