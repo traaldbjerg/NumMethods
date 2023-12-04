@@ -31,6 +31,8 @@ int flexible_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
         printf("Error: v_w must be 0 or 1\n");
         return 1;
     }
+
+    // compute beta
     double *A_B_r = malloc(n * sizeof(double));
 
     CSR_matrix_multiplication(n, ia_ptr[0], ja_ptr[0], a_ptr[0], B_r, A_B_r); // makes a_B_r = A * B_r
@@ -44,20 +46,28 @@ int flexible_cg(int max_recursion, int n, int m, double L, int **ia_ptr, int **j
     } else {
         beta = - dot_product(n, d, A_B_r) / dot_product(n, d, A_d); // makes beta = d^T * a_B_r / d^T * a_d
     }
+
+    // compute d
     double *beta_d = malloc(n * sizeof(double));
     scalar_product(n, beta, d, beta_d); // makes beta_d = beta * d
 
     vector_addition(n, B_r, beta_d, d); // makes d = B^-1 r + beta * d
 
+    // compute alpha
     CSR_matrix_multiplication(n, ia_ptr[0], ja_ptr[0], a_ptr[0], d, A_d);
-        double alpha = dot_product(n, d, r) / dot_product(n, d, A_d); // makes alpha = d^T * a_B_r / d^T * d
+    double alpha = dot_product(n, d, r) / dot_product(n, d, A_d); // makes alpha = d^T * a_B_r / d^T * d
 
+    // compute the new x and r (r could be computed simply with the residual function but this is less costly)
     double *alpha_d = malloc(n * sizeof(double));
     scalar_product(n, alpha, d, alpha_d); // makes alpha_d = alpha * d
     vector_addition(n, x, alpha_d, x); // makes x = x + alpha * d, it is ok to modify directly x
                                        //because we don't need a component again after it has been modified
     scalar_product(n, -alpha, A_d, A_d); // makes a_d = - alpha * a_d
     vector_addition(n, r, A_d, r); // makes r = r - alpha * a_d
+
+    //printf("norm(r) = %.10e\n", norm(n, r)); // debug
+    //printf("norm(b) = %.10e\n", norm(n, b)); // debug
+    //printf("norm(r)/norm(b) = %.10e\n", norm(n, r)/norm(n, b)); // debug
 
     free(B_r); free(A_B_r); free(A_d); free(beta_d); free(alpha_d);
 

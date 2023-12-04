@@ -42,7 +42,7 @@ int two_grid_method(int n, int m, double L, int **ia_ptr, int **ja_ptr, double *
 
     if (solve_umfpack_factorized(n_coarse, ia_ptr[1], ja_ptr[1], a_ptr[1], restr_r, r_coarse, Numeric)) { // rh side is restr_r, we are solving A * x = b_coarse - A * x
                                                                                       // which we will use to compute the prolongation and go back to the fine grid  
-        free(r_coarse); // prevents memory leak
+        free(r_coarse);
         sleep(1); // debug
         return 1;
     }

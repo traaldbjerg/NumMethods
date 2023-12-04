@@ -108,8 +108,6 @@ void* factorize_umfpack(int n, int *ia, int *ja, double *a)
    ia (output) - le tableau 'ia' de la matrice A
    ja (output) - le tableau 'ja' de la matrice A
    a  (output) - le tableau 'a' de la matrice A
-   b  (output) - le tableau des seconds membres B
-   x  (output) - le tableau des solutions X
 */
 {
     /* initialization */
@@ -117,15 +115,10 @@ void* factorize_umfpack(int n, int *ia, int *ja, double *a)
     int status;
     double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
     void *Symbolic, *Numeric ;
-    //int status;
-
-    //double Info [UMFPACK_INFO], Control [UMFPACK_CONTROL];
-    //void *Symbolic, *Numeric ;
     
     /* initialisation des paramètres par défaut */
 
     umfpack_di_defaults (Control) ;
-
 
     /* factorization symbolique */
 
